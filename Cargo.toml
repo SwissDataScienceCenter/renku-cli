@@ -1,0 +1,38 @@
+[package]
+name = "renku-cli"
+description = "A command line interface to the Renku platform"
+homepage = "https://renkulab.io/"
+version = "0.1.0-nightly"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/SwissDatascienceCenter/renku-cli"
+keywords = [ "renku", "cli" ]
+categories = [ "command-line-utilities" ]
+build = "build.rs"
+
+# See more keys and their definitions at
+# https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.5.7", features = ["derive", "wrap_help"] }
+clap_complete = "4.5.6"
+console = {version = "0.15.8"}
+env_logger = { version = "0.11.3" }
+log = { version = "0.4.21" }
+openssl = { version = "0.10.64", optional = true }
+reqwest = { version = "0.12.5", default-features = false, features = ["json", "blocking", "multipart"] }
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.118"
+snafu = { version = "0.8.3" }
+
+[features]
+default = ["reqwest/default-tls"] # link against system library
+rustls = ["reqwest/rustls-tls"] # include rustls, ssl library written in rust
+vendored-openssl = ["openssl/vendored"] # include compiled openssl library
+
+[dev-dependencies]
+assert_cmd = "2.0.14"
+predicates = "3.1.0"
+
+[build-dependencies]
+vergen = { version = "8.3.1", features = ["build", "git", "gitcl", "rustc", "cargo"] }
