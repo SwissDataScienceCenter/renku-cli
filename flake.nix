@@ -156,6 +156,14 @@
         # MY_CUSTOM_DEVELOPMENT_VAR = "something else";
         RENKU_CLI_RENKU_URL = "https://ci-renku-3668.dev.renku.ch";
 
+        # Enable mold https://github.com/rui314/mold
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.clang}/bin/clang";
+        CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUSTFLAGS = "-C link-arg=-fuse-ld=${pkgs.mold}/bin/mold";
+
+        # Need to set LD_LIBRARY_PATH for mold/clang, otherwise ssl is not linked
+        # Not needed when using standard linker
+        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [pkgs.openssl];
+
         # Extra inputs can be added here; cargo and rustc are provided by default.
         packages = with pkgs; [
           cargo-edit
