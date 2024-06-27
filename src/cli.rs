@@ -2,23 +2,23 @@ pub mod cmd;
 pub mod opts;
 pub mod sink;
 
-use self::cmd::{Cmd, CmdError, Context};
+use self::cmd::{CmdError, Context};
 use self::opts::{MainOpts, SubCommand};
 use clap::CommandFactory;
 use serde::Serialize;
 use std::fmt;
 
-pub fn execute_cmd(opts: MainOpts) -> Result<(), CmdError> {
+pub async fn execute_cmd(opts: MainOpts) -> Result<(), CmdError> {
     let ctx = Context::new(&opts.common_opts)?;
 
     log::info!("Running command: {:?}", opts.subcmd);
     match &opts.subcmd {
-        SubCommand::Version(input) => input.exec(&ctx)?,
+        SubCommand::Version(input) => input.exec(&ctx).await?,
         SubCommand::ShellCompletion(input) => {
             let mut app = MainOpts::command();
-            input.print_completions(&mut app);
+            input.print_completions(&mut app).await;
         }
-        SubCommand::Project(input) => input.exec(&ctx)?,
+        SubCommand::Project(input) => input.exec(&ctx).await?,
     };
     Ok(())
 }

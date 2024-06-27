@@ -8,19 +8,13 @@ use crate::httpclient::{self, proxy, Client};
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 
-pub trait Cmd {
-    type CmdError;
-
-    fn exec(&self, args: &Context) -> Result<(), Self::CmdError>;
-}
+const RENKULAB_IO: &str = "https://renkulab.io";
 
 pub struct Context<'a> {
     pub opts: &'a CommonOpts,
     pub client: Client,
     pub renku_url: String,
 }
-
-const RENKULABIO: &str = "https://renkulab.io";
 
 impl Context<'_> {
     pub fn new(opts: &CommonOpts) -> Result<Context, CmdError> {
@@ -35,7 +29,7 @@ impl Context<'_> {
     }
 
     /// A short hand for `Sink::write(self.format(), value)`
-    fn write_result<A: Sink + Serialize>(&self, value: A) -> Result<(), SinkError> {
+    async fn write_result<A: Sink + Serialize>(&self, value: A) -> Result<(), SinkError> {
         let fmt = self.format();
         Sink::write(fmt, &value)
     }
@@ -58,7 +52,7 @@ fn get_renku_url(opts: &CommonOpts) -> String {
             }
             None => {
                 log::debug!("Use renku url: https://renkulab.io");
-                RENKULABIO.to_string()
+                RENKULAB_IO.to_string()
             }
         },
     }

@@ -1,12 +1,12 @@
 use super::cmd::*;
-use clap::{ArgAction, ArgGroup, Parser, ValueEnum, ValueHint};
+use clap::{ArgAction, Parser, ValueEnum, ValueHint};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 /// Main options are available to all commands. They must appear
 /// before a sub-command.
 #[derive(Parser, Debug)]
-#[command(group = ArgGroup::new("tls"))]
+#[command()]
 pub struct CommonOpts {
     /// Be more verbose when logging. Verbosity increases with each
     /// occurence of that option.

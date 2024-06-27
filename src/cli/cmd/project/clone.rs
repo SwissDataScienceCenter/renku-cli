@@ -1,4 +1,4 @@
-use super::{Cmd, Context};
+use super::Context;
 
 use clap::Parser;
 use snafu::Snafu;
@@ -10,10 +10,8 @@ pub struct Input {
     pub slug: String,
 }
 
-impl Cmd for Input {
-    type CmdError = Error;
-
-    fn exec(&self, _ctx: &Context) -> Result<(), Error> {
+impl Input {
+    pub async fn exec<'a>(&self, _ctx: &Context<'a>) -> Result<(), Error> {
         Ok(())
     }
 }

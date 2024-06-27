@@ -1,4 +1,4 @@
-use reqwest::blocking::ClientBuilder;
+use reqwest::ClientBuilder;
 use reqwest::{Proxy, Result};
 
 pub enum ProxySetting {
@@ -31,7 +31,11 @@ impl ProxySetting {
                 let mut p = Proxy::all(url)?;
                 if let Some(login) = user {
                     log::debug!("Use proxy auth: {:?}/***", login);
-                    p = p.basic_auth(login.as_str(), password.as_ref().unwrap_or(&"".into()));
+                    let pass = match password {
+                        Some(p) => p,
+                        None => "",
+                    };
+                    p = p.basic_auth(login, pass);
                 }
                 Ok(builder.proxy(p))
             }

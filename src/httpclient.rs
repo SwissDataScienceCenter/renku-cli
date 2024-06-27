@@ -12,7 +12,9 @@
 //!    &None,
 //!    false
 //! ).unwrap();
-//! println!("{:?}", client.version(false));
+//! async {
+//!   println!("{:?}", client.version(false).await);
+//! };
 //! ```
 //!
 //! # Authentication
@@ -23,8 +25,8 @@ pub mod data;
 pub mod proxy;
 
 use self::data::*;
-use reqwest::blocking::ClientBuilder;
 use reqwest::Certificate;
+use reqwest::ClientBuilder;
 use serde::de::DeserializeOwned;
 use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
@@ -57,7 +59,7 @@ pub enum Error {
 /// This wraps a reqwest client with methods corresonding to renku api
 /// endpoints.
 pub struct Client {
-    client: reqwest::blocking::Client,
+    client: reqwest::Client,
     base_url: String,
 }
 
@@ -107,15 +109,17 @@ impl Client {
     /// response is first decoded into utf8 chars and logged at debug
     /// level. Otherwise bytes are directly decoded from JSON into the
     /// expected structure.
-    fn json_get<R: DeserializeOwned>(&self, path: &str, debug: bool) -> Result<R, Error> {
+    async fn json_get<R: DeserializeOwned>(&self, path: &str, debug: bool) -> Result<R, Error> {
         let url = &format!("{}{}", self.base_url, path);
         if debug {
             let resp = self
                 .client
                 .get(url)
                 .send()
+                .await
                 .context(HttpSnafu { url })?
                 .text()
+                .await
                 .context(DeserializeRespSnafu)?;
             log::debug!("GET {} -> {}", url, resp);
             serde_json::from_str::<R>(&resp).context(DeserializeJsonSnafu)
@@ -123,17 +127,22 @@ impl Client {
             self.client
                 .get(url)
                 .send()
+                .await
                 .context(HttpSnafu { url })?
                 .json::<R>()
+                .await
                 .context(DeserializeRespSnafu)
         }
     }
 
     /// Queries Renku for its version
-    pub fn version(&self, debug: bool) -> Result<VersionInfo, Error> {
-        let data = self.json_get::<SimpleVersion>("/ui-server/api/data/version", debug)?;
-        let search =
-            self.json_get::<SearchServiceVersion>("/ui-server/api/search/version", debug)?;
+    pub async fn version(&self, debug: bool) -> Result<VersionInfo, Error> {
+        let data = self
+            .json_get::<SimpleVersion>("/ui-server/api/data/version", debug)
+            .await?;
+        let search = self
+            .json_get::<SearchServiceVersion>("/ui-server/api/search/version", debug)
+            .await?;
         Ok(VersionInfo { search, data })
     }
 }
