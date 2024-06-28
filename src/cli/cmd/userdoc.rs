@@ -114,7 +114,10 @@ pub enum Error {
 impl Input {
     pub async fn exec<'a>(&self, _ctx: &Context<'a>) -> Result<(), Error> {
         let myself = std::env::current_exe().context(GetBinarySnafu)?;
-        let bin = myself.as_path();
+        let bin = match &self.renku_cli {
+            Some(p) => p.as_path(),
+            None => myself.as_path(),
+        };
         let walk = crate::util::visit_all(self.files.clone()); //TODO only *.md :-)
         walk.map_err(|source| Error::ListDir { source })
             .try_for_each_concurrent(10, |entry| async move {
@@ -143,9 +146,9 @@ impl Input {
 fn write_to_file(file: &Path, content: &str, overwrite: bool) -> Result<(), Error> {
     let mut out = std::fs::File::options()
         .write(true)
-        .append(!true)
         .truncate(overwrite)
-        .create(true)
+        .create(overwrite)
+        .create_new(!overwrite)
         .open(file)
         .context(WriteFileSnafu)?;
 
@@ -179,7 +182,6 @@ async fn process_markdown_file(
             let command = &cc.literal;
             if code_info == code_marker {
                 let cli_out = run_cli_command(cli_binary, command)?;
-
                 let nn = src_nodes.alloc(AstNode::new(RefCell::new(Ast::new(
                     make_code_block(result_marker, cli_out),
                     node_data.sourcepos.end.clone(),
@@ -218,4 +220,12 @@ fn run_cli_command(cli: &Path, line: &str) -> Result<String, Error> {
 
 /// Wraps a string into a fenced code block
 fn make_code_block(marker: &str, content: String) -> NodeValue {
-    NodeVa
+    NodeValue::CodeBlock(NodeCodeBlock {
+        fenced: true,
+        fence_char: 96,
+        fence_length: 3,
+        fence_offset: 0,
+        info: marker.into(),
+        literal: content,
+    })
+}
