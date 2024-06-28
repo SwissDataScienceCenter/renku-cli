@@ -1,6 +1,7 @@
 pub mod cli;
 pub mod error;
 pub mod httpclient;
+pub mod util;
 
 pub use cli::execute_cmd;
 
