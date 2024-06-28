@@ -51,6 +51,9 @@ pub enum SubCommand {
 
     #[command()]
     Project(project::Input),
+
+    #[cfg(feature = "user-doc")]
+    UserDoc(userdoc::Input),
 }
 
 /// This is the command line interface to the Renku platform. Main

@@ -1,5 +1,7 @@
 pub mod project;
 pub mod shell_completion;
+#[cfg(feature = "user-doc")]
+pub mod userdoc;
 pub mod version;
 
 use super::sink::{Error as SinkError, Sink};
@@ -85,6 +87,10 @@ pub enum CmdError {
 
     #[snafu(display("Project - {}", source))]
     Project { source: project::Error },
+
+    #[cfg(feature = "user-doc")]
+    #[snafu(display("UserDoc - {}", source))]
+    UserDoc { source: userdoc::Error },
 }
 
 impl From<version::Error> for CmdError {
@@ -96,5 +102,12 @@ impl From<version::Error> for CmdError {
 impl From<project::Error> for CmdError {
     fn from(source: project::Error) -> Self {
         CmdError::Project { source }
+    }
+}
+
+#[cfg(feature = "user-doc")]
+impl From<userdoc::Error> for CmdError {
+    fn from(source: userdoc::Error) -> Self {
+        CmdError::UserDoc { source }
     }
 }

@@ -26,11 +26,13 @@ serde_json = "1.0.118"
 snafu = { version = "0.8.3" }
 tokio = { version = "1", features = ["full"] }
 futures = { version = "0.3" }
+comrak = { version = "0.24.1", optional = true }
 
 [features]
 default = ["reqwest/default-tls"] # link against system library
 rustls = ["reqwest/rustls-tls"] # include rustls, ssl library written in rust
 vendored-openssl = ["openssl/vendored"] # include compiled openssl library
+user-doc = [ "dep:comrak" ]
 
 [dev-dependencies]
 assert_cmd = "2.0.14"
