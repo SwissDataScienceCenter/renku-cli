@@ -1,4 +1,4 @@
-use super::{Cmd, Context};
+use super::Context;
 use crate::cli::sink::Error as SinkError;
 use crate::cli::sink::Sink;
 use crate::cli::BuildInfo;
@@ -25,16 +25,15 @@ pub enum Error {
     WriteResult { source: SinkError },
 }
 
-impl Cmd for Input {
-    type CmdError = Error;
-
-    fn exec(&self, ctx: &Context) -> Result<(), Error> {
+impl Input {
+    pub async fn exec<'a>(&self, ctx: &Context<'a>) -> Result<(), Error> {
         let result = ctx
             .client
             .version(ctx.opts.verbose > 1)
+            .await
             .context(HttpClientSnafu)?;
         let vinfo = Versions::create(result, &ctx.renku_url);
-        ctx.write_result(vinfo).context(WriteResultSnafu)?;
+        ctx.write_result(vinfo).await.context(WriteResultSnafu)?;
         Ok(())
     }
 }

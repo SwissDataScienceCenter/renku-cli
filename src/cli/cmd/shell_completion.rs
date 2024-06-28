@@ -25,7 +25,7 @@ pub enum GeneratorChoice {
 }
 
 impl Input {
-    pub fn print_completions(&self, app: &mut Command) {
+    pub async fn print_completions(&self, app: &mut Command) {
         let binary = &self.binary;
         match &self.shell {
             GeneratorChoice::Bash => generate_completions(Shell::Bash, binary, app),

@@ -40,6 +40,8 @@
       craneLib = crane.mkLib pkgs;
       src = craneLib.cleanCargoSource ./.;
 
+      fenixToolChain = fenix.packages.${system}.complete;
+
       # Common arguments can be set here to avoid repeating them later
       commonArgs = {
         inherit src;
@@ -65,7 +67,7 @@
 
       craneLibLLvmTools =
         craneLib.overrideToolchain
-        (fenix.packages.${system}.complete.withComponents [
+        (fenixToolChain.withComponents [
           "cargo"
           "llvm-tools"
           "rustc"
@@ -152,6 +154,8 @@
         # Inherit inputs from checks.
         checks = self.checks.${system};
 
+        RUST_SRC_PATH = "${fenixToolChain.rust-src}/lib/rustlib/src/rust/library";
+
         # Additional dev-shell environment variables can be set directly
         # MY_CUSTOM_DEVELOPMENT_VAR = "something else";
         RENKU_CLI_RENKU_URL = "https://ci-renku-3668.dev.renku.ch";
@@ -167,6 +171,8 @@
         # Extra inputs can be added here; cargo and rustc are provided by default.
         packages = with pkgs; [
           cargo-edit
+          fenixToolChain.rust-analyzer
+          fenixToolChain.rustfmt
         ];
       };
     });

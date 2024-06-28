@@ -1,6 +1,6 @@
 pub mod clone;
 
-use super::{Cmd, Context};
+use super::Context;
 use clap::Parser;
 use snafu::{ResultExt, Snafu};
 
@@ -16,12 +16,10 @@ pub struct Input {
     pub subcmd: ProjectCommand,
 }
 
-impl Cmd for Input {
-    type CmdError = Error;
-
-    fn exec(&self, ctx: &Context) -> Result<(), Error> {
+impl Input {
+    pub async fn exec<'a>(&self, ctx: &Context<'a>) -> Result<(), Error> {
         match &self.subcmd {
-            ProjectCommand::Clone(input) => input.exec(ctx).context(CloneSnafu),
+            ProjectCommand::Clone(input) => input.exec(ctx).await.context(CloneSnafu),
         }
     }
 }
