@@ -39,7 +39,7 @@ impl PathEntry {
 /// Visits all entries of the given paths recursively using tokios
 /// async read_dir while returning with every entry the root element
 /// it was queried for (member of the initially passed in `paths`).
-pub fn visit_entries<'a, I, P>(paths: I) -> impl Stream<Item = io::Result<PathEntry>>
+pub fn visit_entries<I, P>(paths: I) -> impl Stream<Item = io::Result<PathEntry>>
 where
     P: Into<PathBuf>,
     I: IntoIterator<Item = P>,
@@ -56,7 +56,7 @@ where
 }
 
 /// Visits all entries of the given paths recursively using tokios async read_dir.
-pub fn visit_all<'a, I, P>(paths: I) -> impl Stream<Item = io::Result<PathBuf>> + Send + 'static
+pub fn visit_all<I, P>(paths: I) -> impl Stream<Item = io::Result<PathBuf>> + Send + 'static
 where
     P: Into<PathBuf>,
     I: IntoIterator<Item = P>,
@@ -84,7 +84,7 @@ where
         paths.into_iter().map(Into::into).collect::<Vec<PathBuf>>(),
         |mut to_visit| async {
             let path = to_visit.pop()?;
-            let file_stream = match one_level(path.into(), &mut to_visit).await {
+            let file_stream = match one_level(path, &mut to_visit).await {
                 Ok(files) => stream::iter(files).map(Ok).left_stream(),
                 Err(e) => stream::once(async { Err(e) }).right_stream(),
             };

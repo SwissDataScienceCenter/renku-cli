@@ -8,3 +8,8 @@ To get quick help, use the cli like this:
 ``` :renku-cli
 renku-cli --help
 ```
+
+
+## Content
+
+- [Clone a project](./project/clone)

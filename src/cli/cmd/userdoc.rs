@@ -134,13 +134,13 @@ impl Input {
             None => myself.as_path(),
         };
         let walk = file_util::visit_entries(self.files.iter())
-            .try_filter(|p| future::ready(Self::path_match(&p.entry, &md_regex)));
+            .try_filter(|p| future::ready(Self::path_match(&p.entry, md_regex)));
         walk.map_err(|source| Error::ListDir { source })
             .try_for_each_concurrent(10, |entry| async move {
-                eprint!("Processing {} …\n", entry);
+                eprintln!("Processing {} …", entry);
                 let result = process_markdown_file(
                     &entry.entry,
-                    &bin,
+                    bin,
                     &self.result_marker,
                     &self.code_marker,
                 )
@@ -150,10 +150,10 @@ impl Input {
                         println!("{}", result);
                     }
                     OutputOption::OutFile(f) => {
-                        write_to_file(&f, &result, self.overwrite)?;
+                        write_to_file(f, &result, self.overwrite)?;
                     }
                     OutputOption::OutDir(f) => {
-                        write_to_dir(&entry, &f, &result, self.overwrite)?;
+                        write_to_dir(&entry, f, &result, self.overwrite)?;
                     }
                 }
                 Ok(())
@@ -162,7 +162,7 @@ impl Input {
         Ok(())
     }
 
-    fn path_match(p: &PathBuf, regex: &Regex) -> bool {
+    fn path_match(p: &Path, regex: &Regex) -> bool {
         match p.file_name().and_then(|n| n.to_str()) {
             Some(name) => regex.is_match(name),
             None => false,
@@ -178,12 +178,9 @@ fn write_to_dir(
 ) -> Result<(), Error> {
     let out = target.join(entry.sub_path().context(PathPrefixSnafu)?);
     log::debug!("Writing {} docs to {}", entry, out.display());
-    match out.parent() {
-        Some(p) => {
-            log::debug!("Ensuring directory: {}", p.display());
-            std::fs::create_dir_all(p).context(CreateDirSnafu)?
-        }
-        None => (),
+    if let Some(p) = out.parent() {
+        log::debug!("Ensuring directory: {}", p.display());
+        std::fs::create_dir_all(p).context(CreateDirSnafu)?
     }
     write_to_file(&out, content, overwrite)?;
     Ok(())
@@ -230,7 +227,7 @@ async fn process_markdown_file(
                 let cli_out = run_cli_command(cli_binary, command)?;
                 let nn = src_nodes.alloc(AstNode::new(RefCell::new(Ast::new(
                     make_code_block(result_marker, cli_out),
-                    node_data.sourcepos.end.clone(),
+                    node_data.sourcepos.end,
                 ))));
                 node.insert_after(nn);
             }
