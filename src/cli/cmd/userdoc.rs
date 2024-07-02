@@ -1,9 +1,12 @@
 use super::Context;
 use crate::cli::sink::Error as SinkError;
+use crate::util::file as file_util;
 use clap::{Parser, ValueHint};
 use comrak::nodes::{Ast, AstNode, NodeCodeBlock, NodeValue};
 use comrak::{Arena, Options};
+use futures::future;
 use futures::stream::TryStreamExt;
+use regex::Regex;
 use snafu::{ResultExt, Snafu};
 use std::cell::RefCell;
 use std::io::Write;
@@ -113,12 +116,14 @@ pub enum Error {
 
 impl Input {
     pub async fn exec<'a>(&self, _ctx: &Context<'a>) -> Result<(), Error> {
+        let md_regex: Regex = Regex::new(r"^.*\.md$").unwrap();
         let myself = std::env::current_exe().context(GetBinarySnafu)?;
         let bin = match &self.renku_cli {
             Some(p) => p.as_path(),
             None => myself.as_path(),
         };
-        let walk = crate::util::visit_all(self.files.clone()); //TODO only *.md :-)
+        let walk = file_util::visit_all(self.files.clone())
+            .try_filter(|p| future::ready(Self::path_match(p, &md_regex)));
         walk.map_err(|source| Error::ListDir { source })
             .try_for_each_concurrent(10, |entry| async move {
                 eprint!("Processing {} …\n", entry.display());
@@ -140,6 +145,13 @@ impl Input {
             })
             .await?;
         Ok(())
+    }
+
+    fn path_match(p: &PathBuf, regex: &Regex) -> bool {
+        match p.file_name().and_then(|n| n.to_str()) {
+            Some(name) => regex.is_match(name),
+            None => false,
+        }
     }
 }
 
