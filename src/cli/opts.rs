@@ -60,6 +60,9 @@ pub enum SubCommand {
 /// options are available to all sub-commands and must appear before
 /// them. Each sub command has its own set of flags/options and
 /// arguments.
+///
+/// Repository: https://github.com/SwissDataScienceCenter/renku-cli
+/// Issue tracker: https://github.com/SwissDataScienceCenter/renku-cli/issues
 #[derive(Parser, Debug)]
 #[command(name = "renku-cli", version)]
 pub struct MainOpts {
