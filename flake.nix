@@ -108,11 +108,12 @@
             inherit cargoArtifacts;
           });
 
-        my-user-docs = craneLib.mkCargoDerivation (commonArgs // {
-          inherit cargoArtifacts;
-          pnameSuffix = "-userdocs";
-          buildPhaseCargoCommand = "cargoWithProfile run --features user-doc -- user-doc ${docSrc}";
-        });
+        my-user-docs = craneLib.mkCargoDerivation (commonArgs
+          // {
+            inherit cargoArtifacts;
+            pnameSuffix = "-userdocs";
+            buildPhaseCargoCommand = "cargoWithProfile run --features user-doc -- user-doc ${docSrc}";
+          });
 
         # Check formatting
         my-crate-fmt = craneLib.cargoFmt {
