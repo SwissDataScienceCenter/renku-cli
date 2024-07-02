@@ -1,6 +1,7 @@
 use super::Context;
 use crate::cli::sink::Error as SinkError;
 use crate::util::file as file_util;
+use crate::util::file::PathEntry;
 use clap::{Parser, ValueHint};
 use comrak::nodes::{Ast, AstNode, NodeCodeBlock, NodeValue};
 use comrak::{Arena, Options};
@@ -20,7 +21,8 @@ use std::process::Command;
 #[derive(Parser, Debug)]
 pub struct Input {
     /// The markdown file(s) to process. If a directory is given, it
-    /// is traversed for `*.md` files.
+    /// is traversed for `*.md` files by default. Use
+    /// `--filter-regex` to change this filter.
     #[arg(required = true, num_args = 1, value_hint = ValueHint::FilePath)]
     pub files: Vec<PathBuf>,
 
@@ -56,6 +58,9 @@ pub struct Input {
     /// that are inserted into the document.
     #[arg(long, default_value = ":renku-cli-output")]
     pub result_marker: String,
+
+    #[arg(long, default_value = "^.*\\.md$")]
+    pub filter_regex: Regex,
 }
 
 enum OutputOption<'a> {
@@ -92,6 +97,9 @@ pub enum Error {
     #[snafu(display("Error listing files: {}", source))]
     ListDir { source: std::io::Error },
 
+    #[snafu(display("Error creating directory: {}", source))]
+    CreateDir { source: std::io::Error },
+
     #[snafu(display("Error writing file: {}", source))]
     WriteFile { source: std::io::Error },
 
@@ -112,24 +120,31 @@ pub enum Error {
 
     #[snafu(display("The file already exists: {}", file.display()))]
     ExistingOutput { file: PathBuf },
+
+    #[snafu(display("Error rebasing target path: {}", source))]
+    PathPrefix { source: std::path::StripPrefixError },
 }
 
 impl Input {
     pub async fn exec<'a>(&self, _ctx: &Context<'a>) -> Result<(), Error> {
-        let md_regex: Regex = Regex::new(r"^.*\.md$").unwrap();
+        let md_regex: &Regex = &self.filter_regex;
         let myself = std::env::current_exe().context(GetBinarySnafu)?;
         let bin = match &self.renku_cli {
             Some(p) => p.as_path(),
             None => myself.as_path(),
         };
-        let walk = file_util::visit_all(self.files.clone())
-            .try_filter(|p| future::ready(Self::path_match(p, &md_regex)));
+        let walk = file_util::visit_entries(self.files.iter())
+            .try_filter(|p| future::ready(Self::path_match(&p.entry, &md_regex)));
         walk.map_err(|source| Error::ListDir { source })
             .try_for_each_concurrent(10, |entry| async move {
-                eprint!("Processing {} …\n", entry.display());
-                let result =
-                    process_markdown_file(&entry, &bin, &self.result_marker, &self.code_marker)
-                        .await?;
+                eprint!("Processing {} …\n", entry);
+                let result = process_markdown_file(
+                    &entry.entry,
+                    &bin,
+                    &self.result_marker,
+                    &self.code_marker,
+                )
+                .await?;
                 match self.get_output() {
                     OutputOption::Stdout => {
                         println!("{}", result);
@@ -138,7 +153,7 @@ impl Input {
                         write_to_file(&f, &result, self.overwrite)?;
                     }
                     OutputOption::OutDir(f) => {
-                        println!("write to dir {:?}", f);
+                        write_to_dir(&entry, &f, &result, self.overwrite)?;
                     }
                 }
                 Ok(())
@@ -153,6 +168,25 @@ impl Input {
             None => false,
         }
     }
+}
+
+fn write_to_dir(
+    entry: &PathEntry,
+    target: &Path,
+    content: &str,
+    overwrite: bool,
+) -> Result<(), Error> {
+    let out = target.join(entry.sub_path().context(PathPrefixSnafu)?);
+    log::debug!("Writing {} docs to {}", entry, out.display());
+    match out.parent() {
+        Some(p) => {
+            log::debug!("Ensuring directory: {}", p.display());
+            std::fs::create_dir_all(p).context(CreateDirSnafu)?
+        }
+        None => (),
+    }
+    write_to_file(&out, content, overwrite)?;
+    Ok(())
 }
 
 fn write_to_file(file: &Path, content: &str, overwrite: bool) -> Result<(), Error> {
