@@ -14,7 +14,7 @@ build = "build.rs"
 # https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = { version = "4.5.7", features = ["derive", "wrap_help"] }
+clap = { version = "4.5.8", features = ["derive", "wrap_help"] }
 clap_complete = "4.5.6"
 console = {version = "0.15.8"}
 env_logger = { version = "0.11.3" }
