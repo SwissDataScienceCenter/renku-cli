@@ -14,7 +14,6 @@ jobs:
         build:
         - aarch64
         - aarch64-musl
-        # - i686
         - amd64-musl
         - amd64
         include:
@@ -28,11 +27,6 @@ jobs:
           target: aarch64-unknown-linux-musl
           use-cross: true
           features: "--no-default-features --features rustls"
-        # - build: i686
-        #   os: ubuntu-latest
-        #   target: i686-unknown-linux-gnu
-        #   use-cross: true
-        #   features: "--no-default-features --features rustls"
         - build: amd64
           os: ubuntu-latest
           target: x86_64-unknown-linux-gnu

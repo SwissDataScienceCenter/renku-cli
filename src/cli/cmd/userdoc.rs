@@ -1,5 +1,6 @@
 use super::Context;
-use crate::cli::sink::Error as SinkError;
+use crate::cli::opts::Format;
+use crate::cli::sink::{Error as SinkError, Sink};
 use crate::util::file as file_util;
 use crate::util::file::PathEntry;
 use clap::{Parser, ValueHint};
@@ -8,16 +9,22 @@ use comrak::{Arena, Options};
 use futures::future;
 use futures::stream::TryStreamExt;
 use regex::Regex;
+use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 use std::cell::RefCell;
+use std::fmt;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::str::FromStr;
 
 /// Reads markdown files and processes renku-cli code blocks.
 ///
-/// Each code block marked with `:renku-cli` is run against this
-/// binary and the result is added below the command code-block.
+/// Each code block marked with `renku-cli` or `rnk` is run against
+/// this binary and the result is added below the command code-block.
+///
+/// If you use `renku-cli:silent` or `rnk:silent` the command will be
+/// run, but the output is ignored.
 #[derive(Parser, Debug)]
 pub struct Input {
     /// The markdown file(s) to process. If a directory is given, it
@@ -49,16 +56,15 @@ pub struct Input {
     #[arg(long, default_value_t = false)]
     pub overwrite: bool,
 
-    /// The code block marker to use for detecting which code blocks
-    /// to extract.
-    #[arg(long, default_value = ":renku-cli")]
-    pub code_marker: String,
-
     /// The code block marker to use for annotating the result code blocks
     /// that are inserted into the document.
-    #[arg(long, default_value = ":renku-cli-output")]
+    #[arg(long, default_value = "renku-cli-output")]
     pub result_marker: String,
 
+    /// A regex for filtering files when traversing directories. By
+    /// default only markdown (*.md) files are picked up. The regex is
+    /// matched against the simple file name (not the absolute one
+    /// including the full path).
     #[arg(long, default_value = "^.*\\.md$")]
     pub filter_regex: Regex,
 }
@@ -126,7 +132,7 @@ pub enum Error {
 }
 
 impl Input {
-    pub async fn exec<'a>(&self, _ctx: &Context<'a>) -> Result<(), Error> {
+    pub async fn exec<'a>(&self, ctx: &Context<'a>) -> Result<(), Error> {
         let md_regex: &Regex = &self.filter_regex;
         let myself = std::env::current_exe().context(GetBinarySnafu)?;
         let bin = match &self.renku_cli {
@@ -137,25 +143,25 @@ impl Input {
             .try_filter(|p| future::ready(Self::path_match(&p.entry, md_regex)));
         walk.map_err(|source| Error::ListDir { source })
             .try_for_each_concurrent(10, |entry| async move {
-                eprintln!("Processing {} …", entry);
-                let result = process_markdown_file(
-                    &entry.entry,
-                    bin,
-                    &self.result_marker,
-                    &self.code_marker,
-                )
-                .await?;
+                let result = process_markdown_file(&entry.entry, bin, &self.result_marker).await?;
                 match self.get_output() {
                     OutputOption::Stdout => {
-                        println!("{}", result);
+                        if ctx.opts.format != Format::Json {
+                            println!("{}", result);
+                        }
                     }
                     OutputOption::OutFile(f) => {
-                        write_to_file(f, &result, self.overwrite)?;
+                        write_to_file(f, &result, self.overwrite, true)?;
                     }
                     OutputOption::OutDir(f) => {
                         write_to_dir(&entry, f, &result, self.overwrite)?;
                     }
                 }
+                let res = Processed {
+                    entry,
+                    output: result,
+                };
+                ctx.write_result(&res).await.context(WriteResultSnafu)?;
                 Ok(())
             })
             .await?;
@@ -182,16 +188,17 @@ fn write_to_dir(
         log::debug!("Ensuring directory: {}", p.display());
         std::fs::create_dir_all(p).context(CreateDirSnafu)?
     }
-    write_to_file(&out, content, overwrite)?;
+    write_to_file(&out, content, overwrite, false)?;
     Ok(())
 }
 
-fn write_to_file(file: &Path, content: &str, overwrite: bool) -> Result<(), Error> {
+fn write_to_file(file: &Path, content: &str, overwrite: bool, append: bool) -> Result<(), Error> {
     let mut out = std::fs::File::options()
         .write(true)
-        .truncate(overwrite)
+        .truncate(overwrite && !append)
         .create(overwrite)
         .create_new(!overwrite)
+        .append(append)
         .open(file)
         .context(WriteFileSnafu)?;
 
@@ -213,7 +220,6 @@ async fn process_markdown_file(
     file: &PathBuf,
     cli_binary: &Path,
     result_marker: &str,
-    code_marker: &str,
 ) -> Result<String, Error> {
     let src_md = std::fs::read_to_string(file).context(ReadFileSnafu { path: file })?;
     let src_nodes = Arena::new();
@@ -221,15 +227,25 @@ async fn process_markdown_file(
     for node in root.descendants() {
         let node_data = node.data.borrow();
         if let NodeValue::CodeBlock(ref cc) = node_data.value {
-            let code_info = &cc.info;
             let command = &cc.literal;
-            if code_info == code_marker {
-                let cli_out = run_cli_command(cli_binary, command)?;
-                let nn = src_nodes.alloc(AstNode::new(RefCell::new(Ast::new(
-                    make_code_block(result_marker, cli_out),
-                    node_data.sourcepos.end,
-                ))));
-                node.insert_after(nn);
+            log::debug!("Process code block: {}", &cc.info);
+            match parse_fence_info(&cc.info) {
+                None => {
+                    log::debug!("Code block not processed: {}", &cc.info);
+                }
+                Some(FenceModifier::Default) => {
+                    log::debug!("Run code block and insert result for: {}", &cc.info);
+                    let cli_out = run_cli_command(cli_binary, command)?;
+                    let nn = src_nodes.alloc(AstNode::new(RefCell::new(Ast::new(
+                        make_code_block(result_marker, cli_out),
+                        node_data.sourcepos.end,
+                    ))));
+                    node.insert_after(nn);
+                }
+                Some(FenceModifier::Silent) => {
+                    log::debug!("Run code block and ignore result for: {}", &cc.info);
+                    run_cli_command(cli_binary, command)?;
+                }
             }
         }
     }
@@ -241,6 +257,7 @@ async fn process_markdown_file(
 
 /// Run the given command line using the given binary.
 fn run_cli_command(cli: &Path, line: &str) -> Result<String, Error> {
+    log::debug!("Run: {} {}", cli.display(), line);
     // TODO: instead of running itself as a new process, just call main
     let mut args = line.split_whitespace();
     args.next(); // skip first word which is the binary name
@@ -250,6 +267,7 @@ fn run_cli_command(cli: &Path, line: &str) -> Result<String, Error> {
         .output()
         .context(ExecuteCliSnafu)?;
     if cmd.status.success() {
+        log::debug!("Command ran successful");
         let out = String::from_utf8(cmd.stdout).context(Utf8DecodeSnafu)?;
         Ok(out)
     } else {
@@ -272,3 +290,45 @@ fn make_code_block(marker: &str, content: String) -> NodeValue {
         literal: content,
     })
 }
+
+enum FenceModifier {
+    Default,
+    Silent,
+}
+
+impl FromStr for FenceModifier {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "renku-cli" => Ok(FenceModifier::Default),
+            "rnk" => Ok(FenceModifier::Default),
+            "renku-cli:silent" => Ok(FenceModifier::Silent),
+            "rnk:silent" => Ok(FenceModifier::Silent),
+            &_ => Err(format!("Invalid modifier: {}", s)),
+        }
+    }
+}
+
+fn parse_fence_info(info: &str) -> Option<FenceModifier> {
+    log::debug!("Read fence info: {}", info);
+    let mut parts = info.split_whitespace();
+    parts.next(); // skip language definition
+    parts.next().and_then(|s| FenceModifier::from_str(s).ok())
+}
+
+impl Sink for PathEntry {}
+
+#[derive(Debug, Serialize)]
+struct Processed {
+    pub entry: PathEntry,
+    pub output: String,
+}
+
+impl fmt::Display for Processed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Processed {} ...", self.entry.entry.display())
+    }
+}
+
+impl Sink for Processed {}

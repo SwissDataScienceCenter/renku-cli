@@ -5,7 +5,7 @@ pub mod userdoc;
 pub mod version;
 
 use super::sink::{Error as SinkError, Sink};
-use crate::cli::opts::{CommonOpts, Format, ProxySetting};
+use crate::cli::opts::{CommonOpts, ProxySetting};
 use crate::httpclient::{self, proxy, Client};
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
@@ -31,13 +31,9 @@ impl Context<'_> {
     }
 
     /// A short hand for `Sink::write(self.format(), value)`
-    async fn write_result<A: Sink + Serialize>(&self, value: A) -> Result<(), SinkError> {
-        let fmt = self.format();
-        Sink::write(fmt, &value)
-    }
-
-    fn format(&self) -> Format {
-        self.opts.format.unwrap_or(Format::Default)
+    async fn write_result<A: Sink + Serialize>(&self, value: &A) -> Result<(), SinkError> {
+        let fmt = self.opts.format;
+        Sink::write(&fmt, value)
     }
 }
 

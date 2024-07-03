@@ -1,5 +1,6 @@
 use futures::TryStreamExt;
 use futures::{stream, Stream, StreamExt};
+use serde::Serialize;
 use std::fmt;
 use std::io;
 use std::path::{Path, PathBuf, StripPrefixError};
@@ -19,6 +20,7 @@ pub fn splice_name(fname: &str, suffix: &i32) -> String {
     }
 }
 
+#[derive(Debug, Serialize)]
 pub struct PathEntry {
     pub root: PathBuf,
     pub entry: PathBuf,

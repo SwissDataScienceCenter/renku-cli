@@ -10,7 +10,7 @@
   - [x] for testing an all platforms
 - [x] contributing.md (check mold)
 - [x] add tokio and async all the things
-- [ ] user documentation
+- [x] user documentation
   - the `--help` is good for a quick and to-the-point documentation of
     the cli, but there must also be something more elaborate
   - this documentation should contain example runs of the cli and it's
@@ -19,8 +19,9 @@
   - silent code blocks
 - [ ] getting started guide (what to download, how to run etc)
 - [ ] rename binary to `rnk`
-- [ ] test on mac and windows
-- [ ] check to create a mac package
+- [ ] test on mac 
+- [x] test on windows
+- [ ] check how to create a proper mac package
 - [ ] nice to have: clone a project / repo
 - [ ] think better what is `pub` and what is not, thinking about
       providing a rust library alongside the cli maybe

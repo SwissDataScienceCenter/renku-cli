@@ -17,8 +17,8 @@ pub struct CommonOpts {
     /// may choose to not show every detail for better readability.
     /// The json output format can be used to always show all details
     /// in a structured form.
-    #[arg(short, long, value_enum)]
-    pub format: Option<Format>,
+    #[arg(short, long, value_enum, default_value_t = Format::Default)]
+    pub format: Format,
 
     /// The (base) URL to Renku. It can be given as environment
     /// variable RENKU_CLI_RENKU_URL.
@@ -74,7 +74,7 @@ pub struct MainOpts {
 }
 
 /// The format for presenting the results.
-#[derive(ValueEnum, Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(ValueEnum, Debug, Copy, Clone, Serialize, Deserialize, PartialEq)]
 pub enum Format {
     Json,
     Default,
