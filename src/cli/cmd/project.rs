@@ -6,6 +6,7 @@ use snafu::{ResultExt, Snafu};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
+    #[snafu(display("Error cloning project: {}", source))]
     Clone { source: clone::Error },
 }
 

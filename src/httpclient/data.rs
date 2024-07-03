@@ -1,7 +1,30 @@
 //! Defines data structures for requests and responses and their
 //! `De/Serialize` instances.
 
+use iso8601_timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum Visibility {
+    #[serde(alias = "public")]
+    Public,
+    #[serde(alias = "private")]
+    Private,
+}
+impl Visibility {
+    pub fn as_string(&self) -> &str {
+        match self {
+            Visibility::Private => "private",
+            Visibility::Public => "public",
+        }
+    }
+}
+impl fmt::Display for Visibility {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_string())
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SearchServiceVersion {
@@ -21,4 +44,18 @@ pub struct SimpleVersion {
 pub struct VersionInfo {
     pub search: SearchServiceVersion,
     pub data: SimpleVersion,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProjectDetails {
+    pub id: String,
+    pub name: String,
+    pub namespace: String,
+    pub slug: String,
+    pub visibility: Visibility,
+    pub etag: Option<String>,
+    pub repositories: Vec<String>,
+    pub description: Option<String>,
+    pub keywords: Vec<String>,
+    pub creation_date: Timestamp,
 }

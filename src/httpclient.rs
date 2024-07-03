@@ -145,4 +145,23 @@ impl Client {
             .await?;
         Ok(VersionInfo { search, data })
     }
+
+    /// Get project details given the namespace and slug.
+    pub async fn get_project_by_slug(
+        &self,
+        namespace: &str,
+        slug: &str,
+        debug: bool,
+    ) -> Result<ProjectDetails, Error> {
+        let path = format!("/api/data/projects/{}/{}", namespace, slug);
+        let details = self.json_get::<ProjectDetails>(&path, debug).await?;
+        Ok(details)
+    }
+
+    /// Get project details by project id.
+    pub async fn get_project_by_id(&self, id: &str, debug: bool) -> Result<ProjectDetails, Error> {
+        let path = format!("/api/data/projects/{}", id);
+        let details = self.json_get::<ProjectDetails>(&path, debug).await?;
+        Ok(details)
+    }
 }
