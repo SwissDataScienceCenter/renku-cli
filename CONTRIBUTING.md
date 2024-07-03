@@ -68,6 +68,14 @@ cargo run -- <options to the cli tool here>
 
 Run it without any options after the `--` to see a quick help.
 
+## Run ci checks
+
+All checks that are run by ci can be run locally with:
+```
+nix flake check
+```
+
+
 ## Nix Setup Description
 
 The `flake.nix` defines how to build and test this package by
@@ -130,3 +138,13 @@ Alternatively, edit `.envrc` to read `use flake .#<your-devshell-attribute>`.
    - in `cli.rs` run the command, most likely analogous to the
      existing ones
    - in `cmd.rs` add another `From` impl for the error (if necessary)
+
+### Adding integration test
+
+The crate [assert-cmd](https://docs.rs/assert_cmd/latest/assert_cmd/)
+is used to create integration tests. By default, integration tests are
+looked up in the `tests/` folder.
+
+To get started, look into the existing tests. The `common` module
+provides some convience functions, like the `mk_cmd` which creates the
+command and adds some global options for testing.

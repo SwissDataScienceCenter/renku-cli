@@ -19,6 +19,9 @@ pub async fn execute_cmd(opts: MainOpts) -> Result<(), CmdError> {
             input.print_completions(&mut app).await;
         }
         SubCommand::Project(input) => input.exec(&ctx).await?,
+
+        #[cfg(feature = "user-doc")]
+        SubCommand::UserDoc(input) => input.exec(&ctx).await?,
     };
     Ok(())
 }

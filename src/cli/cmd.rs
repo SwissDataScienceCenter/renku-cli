@@ -1,9 +1,11 @@
 pub mod project;
 pub mod shell_completion;
+#[cfg(feature = "user-doc")]
+pub mod userdoc;
 pub mod version;
 
 use super::sink::{Error as SinkError, Sink};
-use crate::cli::opts::{CommonOpts, Format, ProxySetting};
+use crate::cli::opts::{CommonOpts, ProxySetting};
 use crate::httpclient::{self, proxy, Client};
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
@@ -29,13 +31,9 @@ impl Context<'_> {
     }
 
     /// A short hand for `Sink::write(self.format(), value)`
-    async fn write_result<A: Sink + Serialize>(&self, value: A) -> Result<(), SinkError> {
-        let fmt = self.format();
-        Sink::write(fmt, &value)
-    }
-
-    fn format(&self) -> Format {
-        self.opts.format.unwrap_or(Format::Default)
+    async fn write_result<A: Sink + Serialize>(&self, value: &A) -> Result<(), SinkError> {
+        let fmt = self.opts.format;
+        Sink::write(&fmt, value)
     }
 }
 
@@ -85,6 +83,10 @@ pub enum CmdError {
 
     #[snafu(display("Project - {}", source))]
     Project { source: project::Error },
+
+    #[cfg(feature = "user-doc")]
+    #[snafu(display("UserDoc - {}", source))]
+    UserDoc { source: userdoc::Error },
 }
 
 impl From<version::Error> for CmdError {
@@ -96,5 +98,12 @@ impl From<version::Error> for CmdError {
 impl From<project::Error> for CmdError {
     fn from(source: project::Error) -> Self {
         CmdError::Project { source }
+    }
+}
+
+#[cfg(feature = "user-doc")]
+impl From<userdoc::Error> for CmdError {
+    fn from(source: userdoc::Error) -> Self {
+        CmdError::UserDoc { source }
     }
 }

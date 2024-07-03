@@ -33,7 +33,7 @@ impl Input {
             .await
             .context(HttpClientSnafu)?;
         let vinfo = Versions::create(result, &ctx.renku_url);
-        ctx.write_result(vinfo).await.context(WriteResultSnafu)?;
+        ctx.write_result(&vinfo).await.context(WriteResultSnafu)?;
         Ok(())
     }
 }

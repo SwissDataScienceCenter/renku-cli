@@ -39,6 +39,7 @@
 
       craneLib = crane.mkLib pkgs;
       src = craneLib.cleanCargoSource ./.;
+      docSrc = ./docs;
 
       fenixToolChain = fenix.packages.${system}.complete;
 
@@ -99,12 +100,19 @@
         my-crate-clippy = craneLib.cargoClippy (commonArgs
           // {
             inherit cargoArtifacts;
-            cargoClippyExtraArgs = "--all-targets -- --deny warnings";
+            cargoClippyExtraArgs = "--features user-doc --all-targets -- --deny warnings";
           });
 
         my-crate-doc = craneLib.cargoDoc (commonArgs
           // {
             inherit cargoArtifacts;
+          });
+
+        my-user-docs = craneLib.mkCargoDerivation (commonArgs
+          // {
+            inherit cargoArtifacts;
+            pnameSuffix = "-userdocs";
+            buildPhaseCargoCommand = "cargoWithProfile run --features user-doc -- user-doc ${docSrc}";
           });
 
         # Check formatting

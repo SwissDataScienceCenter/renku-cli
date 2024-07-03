@@ -50,7 +50,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release
+          args: --release --features user-doc
+      - name: User Docs
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --release --features user-doc -- user-doc ./docs
 
   ci:
     runs-on: ubuntu-latest

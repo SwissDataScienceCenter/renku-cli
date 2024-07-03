@@ -12,14 +12,14 @@ pub trait Sink
 where
     Self: Serialize + Display,
 {
-    fn write(format: Format, value: &Self) -> Result<(), Error> {
+    fn write(format: &Format, value: &Self) -> Result<(), Error> {
         match format {
             Format::Json => {
-                serde_json::to_writer(std::io::stdout(), &value)?;
+                serde_json::to_writer(std::io::stdout(), value)?;
                 Ok(())
             }
             Format::Default => {
-                println!("{}", &value);
+                println!("{}", value);
                 Ok(())
             }
         }
