@@ -1340,29 +1340,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
 
 [[package]]
-name = "renku-cli"
-version = "0.1.0-nightly"
-dependencies = [
- "assert_cmd",
- "clap",
- "clap_complete",
- "comrak",
- "console",
- "env_logger",
- "futures",
- "log",
- "openssl",
- "predicates",
- "regex",
- "reqwest",
- "serde",
- "serde_json",
- "snafu",
- "tokio",
- "vergen",
-]
-
-[[package]]
 name = "reqwest"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1422,6 +1399,29 @@ dependencies = [
  "spin",
  "untrusted",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rnk"
+version = "0.1.0-nightly"
+dependencies = [
+ "assert_cmd",
+ "clap",
+ "clap_complete",
+ "comrak",
+ "console",
+ "env_logger",
+ "futures",
+ "log",
+ "openssl",
+ "predicates",
+ "regex",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "snafu",
+ "tokio",
+ "vergen",
 ]
 
 [[package]]

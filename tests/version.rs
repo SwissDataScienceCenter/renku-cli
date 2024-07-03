@@ -2,7 +2,7 @@ mod common;
 use crate::common::*;
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
-use renku_cli::cli::BuildInfo;
+use rnk::cli::BuildInfo;
 
 #[test]
 #[ignore = "needs a server"]

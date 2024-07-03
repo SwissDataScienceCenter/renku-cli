@@ -27,7 +27,7 @@ impl std::convert::From<serde_json::Error> for Error {
 pub type Result<A> = std::result::Result<A, Error>;
 
 pub fn mk_cmd() -> Result<Command> {
-    let mut cmd = Command::cargo_bin("renku-cli")?;
+    let mut cmd = Command::cargo_bin("rnk")?;
     cmd.args(["--renku-url", "https://ci-renku-3668.dev.renku.ch"]); //use mock url?
     Ok(cmd)
 }

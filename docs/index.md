@@ -1,12 +1,12 @@
 # Renku CLI
 
-This is the documentation for `renku-cli` the command line interface
-to the Renku platform.
+This is the documentation for the command line interface to the Renku
+platform.
 
 
 ## Installation
 
-The binary name for the renku-cli is `renku-cli`.
+The binary name for the renku-cli is `rnk`.
 
 ### Manual Download
 
@@ -17,9 +17,12 @@ If you run on MacOS, download the `*-darwin` binary. If you run some
 form of linux, try `*-amd64` or `*-aarch64`. Last for Windows use the
 `*-windows` binary.
 
+Once downloaded, you can simply execute it without any further
+installation step.
+
 ### Nix User
 
-If you are a nix user and have flakes enabled, you can install renku-cli
+If you are a nix user and have flakes enabled, you can install rnk
 from this repository:
 
 ```
@@ -46,5 +49,5 @@ get an overview of possible commands, run the binary without any
 options or adding `--help`.
 
 ``` bash renku-cli
-renku-cli --help
+rnk --help
 ```

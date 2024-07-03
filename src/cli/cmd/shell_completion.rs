@@ -10,7 +10,7 @@ pub struct Input {
     pub shell: GeneratorChoice,
 
     /// The binary name.
-    #[arg(long, default_value = "renku-cli")]
+    #[arg(long, default_value = "rnk")]
     pub binary: String,
 }
 
