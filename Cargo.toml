@@ -1,5 +1,5 @@
 [package]
-name = "renku-cli"
+name = "rnk"
 description = "A command line interface to the Renku platform"
 homepage = "https://renkulab.io/"
 version = "0.1.0-nightly"

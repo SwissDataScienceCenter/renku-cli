@@ -47,8 +47,8 @@ pub struct Input {
     #[arg(long, group = "output")]
     pub output_dir: Option<PathBuf>,
 
-    /// The renku-cli binary program to use for running the snippets.
-    /// By default it will use itself.
+    /// The rnk binary program to use for running the snippets. By
+    /// default it will use itself.
     #[arg(long)]
     pub renku_cli: Option<PathBuf>,
 
@@ -207,7 +207,7 @@ fn write_to_file(file: &Path, content: &str, overwrite: bool, append: bool) -> R
     Ok(())
 }
 
-/// Process a markdown file by executing all included renku-cli
+/// Process a markdown file by executing all included rnk
 /// commands and inserting the results.
 ///
 /// The commands are taken from (fenced) code blocks marked with

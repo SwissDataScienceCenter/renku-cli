@@ -64,7 +64,7 @@ pub enum SubCommand {
 /// Repository: https://github.com/SwissDataScienceCenter/renku-cli
 /// Issue tracker: https://github.com/SwissDataScienceCenter/renku-cli/issues
 #[derive(Parser, Debug)]
-#[command(name = "renku-cli", version)]
+#[command(name = "rnk", version)]
 pub struct MainOpts {
     #[clap(flatten)]
     pub common_opts: CommonOpts,

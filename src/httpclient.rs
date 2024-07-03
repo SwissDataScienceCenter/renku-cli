@@ -5,7 +5,7 @@
 //! # Usage
 //!
 //! ```rust
-//! use renku_cli::httpclient;
+//! use rnk::httpclient;
 //! let client = httpclient::Client::new(
 //!    "https://renkulab.io",
 //!    httpclient::proxy::ProxySetting::System,

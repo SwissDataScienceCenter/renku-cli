@@ -1,4 +1,4 @@
-use renku_cli::error::{Error, Result};
+use rnk::error::{Error, Result};
 use std::env;
 use std::process;
 
@@ -15,7 +15,7 @@ async fn main() {
 }
 
 async fn execute() -> Result<()> {
-    let opts = renku_cli::read_args();
+    let opts = rnk::read_args();
     let remove_env = match opts.common_opts.verbose {
         1 => set_log_level("info"),
         n => {
@@ -28,7 +28,7 @@ async fn execute() -> Result<()> {
     };
     env_logger::init();
 
-    let result = renku_cli::execute_cmd(opts).await;
+    let result = rnk::execute_cmd(opts).await;
     if remove_env {
         env::remove_var(LOG_LEVEL);
     }
