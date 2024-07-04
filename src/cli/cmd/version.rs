@@ -76,4 +76,3 @@ impl fmt::Display for Versions<'_> {
 }
 
 impl Sink for Versions<'_> {}
-impl Sink for BuildInfo {}

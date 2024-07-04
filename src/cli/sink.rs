@@ -1,7 +1,12 @@
 use crate::cli::opts::Format;
+use crate::httpclient::data::*;
+use crate::util::data::*;
+use crate::util::file::PathEntry;
 use serde::Serialize;
 use snafu::Snafu;
 use std::fmt::Display;
+
+use super::BuildInfo;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -24,6 +29,18 @@ where
             }
         }
     }
+    fn write_err(format: &Format, value: &Self) -> Result<(), Error> {
+        match format {
+            Format::Json => {
+                serde_json::to_writer(std::io::stderr(), value)?;
+                Ok(())
+            }
+            Format::Default => {
+                eprintln!("{}", value);
+                Ok(())
+            }
+        }
+    }
 }
 
 impl From<serde_json::Error> for Error {
@@ -31,3 +48,8 @@ impl From<serde_json::Error> for Error {
         Error::Json { source: e }
     }
 }
+
+impl Sink for ProjectDetails {}
+impl Sink for SimpleMessage {}
+impl Sink for BuildInfo {}
+impl Sink for PathEntry {}

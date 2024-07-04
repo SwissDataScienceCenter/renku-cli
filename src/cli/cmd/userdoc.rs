@@ -317,8 +317,6 @@ fn parse_fence_info(info: &str) -> Option<FenceModifier> {
     parts.next().and_then(|s| FenceModifier::from_str(s).ok())
 }
 
-impl Sink for PathEntry {}
-
 #[derive(Debug, Serialize)]
 struct Processed {
     pub entry: PathEntry,

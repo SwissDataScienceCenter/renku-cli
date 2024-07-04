@@ -59,3 +59,16 @@ pub struct ProjectDetails {
     pub keywords: Vec<String>,
     pub creation_date: Timestamp,
 }
+impl fmt::Display for ProjectDetails {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let lines = self
+            .repositories
+            .iter()
+            .fold(String::new(), |a, b| a + "\n  - " + b);
+        write!(
+            f,
+            "Id: {}\nNamespace/Slug: {}/{}\nVisibility: {}\nCreated At: {}\nRepositories:{}",
+            self.id, self.namespace, self.slug, self.visibility, self.creation_date, lines
+        )
+    }
+}

@@ -2,14 +2,12 @@ use crate::httpclient::data::ProjectDetails;
 
 use super::Context;
 use crate::cli::sink::Error as SinkError;
-use crate::cli::sink::Sink;
 use crate::httpclient::Error as HttpError;
-use crate::util::data::ProjectId;
+use crate::util::data::{ProjectId, SimpleMessage};
 
 use clap::Parser;
-use git2::Repository;
+use git2::{Error as GitError, Repository};
 use snafu::{ResultExt, Snafu};
-use std::fmt;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -42,6 +40,9 @@ pub enum Error {
 
     #[snafu(display("Error creating directory: {}", source))]
     CreateDir { source: std::io::Error },
+
+    #[snafu(display("Error cloning project: {}", source))]
+    GitClone { source: GitError },
 }
 
 impl Input {
@@ -58,8 +59,19 @@ impl Input {
                 .await
                 .context(HttpClientSnafu)?,
         };
-        let target = self.target_dir()?;
-        clone_project(&details, &target)?;
+        let target = self.target_dir()?.join(&details.slug);
+        ctx.write_err(&SimpleMessage {
+            message: format!(
+                "Cloning {} ({}) into {}...",
+                details.slug,
+                details.id,
+                target.display()
+            ),
+        })
+        .await
+        .context(WriteResultSnafu)?;
+
+        clone_project(ctx, &details, &target).await?;
         ctx.write_result(&details).await.context(WriteResultSnafu)?;
         Ok(())
     }
@@ -81,30 +93,38 @@ impl Input {
 }
 
 //TODO make async
-fn clone_project(project: &ProjectDetails, parent: &Path) -> Result<(), Error> {
-    std::fs::create_dir_all(parent).context(CreateDirSnafu)?;
+async fn clone_project<'a>(
+    ctx: &Context<'a>,
+    project: &ProjectDetails,
+    target: &Path,
+) -> Result<(), Error> {
+    std::fs::create_dir_all(target).context(CreateDirSnafu)?;
     for repo in project.repositories.iter() {
-        let name = match repo.rsplit_once('/') {
-            Some((_, n)) => n,
-            None => "no-name",
-        };
-        let rr = Repository::clone(&repo, parent.join(name)).unwrap();
-        println!("cloned: {:?}", rr.head().unwrap().name());
+        clone_repository(ctx, &repo, target).await?;
     }
     Ok(())
 }
 
-impl fmt::Display for ProjectDetails {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lines = self
-            .repositories
-            .iter()
-            .fold(String::new(), |a, b| a + "\n  - " + b);
-        write!(
-            f,
-            "Id: {}\nNamespace/Slug: {}/{}\nVisibility: {}\nCreated At: {}\nRepositories:{}",
-            self.id, self.namespace, self.slug, self.visibility, self.creation_date, lines
-        )
+async fn clone_repository<'a>(ctx: &Context<'a>, repo_url: &str, dir: &Path) -> Result<(), Error> {
+    let name = match repo_url.rsplit_once('/') {
+        Some((_, n)) => n,
+        None => "no-name",
+    };
+    let local_path = dir.join(&name);
+    if local_path.exists() {
+        ctx.write_err(&SimpleMessage {
+            message: format!("The repository {} already exists", name),
+        })
+        .await
+        .context(WriteResultSnafu)?;
+    } else {
+        //TODO use the builder to access more options
+        Repository::clone(&repo_url, &local_path).context(GitCloneSnafu)?;
+        ctx.write_err(&SimpleMessage {
+            message: format!("Cloned: {} to {}", repo_url, local_path.display()),
+        })
+        .await
+        .context(WriteResultSnafu)?;
     }
+    Ok(())
 }
-impl Sink for ProjectDetails {}

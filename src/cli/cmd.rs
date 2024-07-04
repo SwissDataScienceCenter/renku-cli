@@ -35,6 +35,12 @@ impl Context<'_> {
         let fmt = self.opts.format;
         Sink::write(&fmt, value)
     }
+
+    /// A short hand for `Sink::write_err(self.format(), value)`
+    async fn write_err<A: Sink + Serialize>(&self, value: &A) -> Result<(), SinkError> {
+        let fmt = self.opts.format;
+        Sink::write_err(&fmt, value)
+    }
 }
 
 fn get_renku_url(opts: &CommonOpts) -> String {

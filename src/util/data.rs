@@ -1,6 +1,7 @@
 use std::fmt;
 use std::str;
 
+use serde::Serialize;
 use snafu::Snafu;
 
 #[derive(Debug)]
@@ -40,5 +41,16 @@ impl str::FromStr for ProjectId {
 impl fmt::Display for ProjectId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_string())
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct SimpleMessage {
+    pub message: String,
+}
+
+impl fmt::Display for SimpleMessage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
     }
 }

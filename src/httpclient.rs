@@ -153,6 +153,7 @@ impl Client {
         slug: &str,
         debug: bool,
     ) -> Result<ProjectDetails, Error> {
+        log::debug!("Get project by namespace/slug: {}/{}", namespace, slug);
         let path = format!("/api/data/projects/{}/{}", namespace, slug);
         let details = self.json_get::<ProjectDetails>(&path, debug).await?;
         Ok(details)
@@ -160,6 +161,7 @@ impl Client {
 
     /// Get project details by project id.
     pub async fn get_project_by_id(&self, id: &str, debug: bool) -> Result<ProjectDetails, Error> {
+        log::debug!("Get project by id: {}", id);
         let path = format!("/api/data/projects/{}", id);
         let details = self.json_get::<ProjectDetails>(&path, debug).await?;
         Ok(details)
