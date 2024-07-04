@@ -262,6 +262,7 @@ fn run_cli_command(cli: &Path, line: &str) -> Result<String, Error> {
     let mut args = line.split_whitespace();
     args.next(); // skip first word which is the binary name
     let remain: Vec<&str> = args.collect();
+    // TODO use tokio::process instead
     let cmd = Command::new(cli)
         .args(remain)
         .output()

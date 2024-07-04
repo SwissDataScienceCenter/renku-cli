@@ -187,6 +187,7 @@
         packages = with pkgs; [
           cargo-edit
           cargo-expand
+          tokio-console
           fenixToolChain.rust-analyzer
           fenixToolChain.rustfmt
         ];

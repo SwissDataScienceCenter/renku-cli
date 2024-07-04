@@ -99,9 +99,17 @@ async fn clone_project<'a>(
     target: &Path,
 ) -> Result<(), Error> {
     std::fs::create_dir_all(target).context(CreateDirSnafu)?;
-    for repo in project.repositories.iter() {
-        clone_repository(ctx, &repo, target).await?;
-    }
+    // TODO use JoinSet or something to propagate errors
+    futures::future::join_all(
+        project
+            .repositories
+            .iter()
+            .map(|repo| clone_repository(ctx, &repo, target)),
+    )
+    .await;
+    // for repo in project.repositories.iter() {
+    //     clone_repository(ctx, &repo, target).await?;
+    // }
     Ok(())
 }
 
@@ -118,8 +126,10 @@ async fn clone_repository<'a>(ctx: &Context<'a>, repo_url: &str, dir: &Path) -> 
         .await
         .context(WriteResultSnafu)?;
     } else {
-        //TODO use the builder to access more options
-        Repository::clone(&repo_url, &local_path).context(GitCloneSnafu)?;
+        // TODO use tokio::task::spawn_blocking!
+        // TODO use the builder to access more options
+        Repository::clone(repo_url, &local_path).context(GitCloneSnafu)?;
+
         ctx.write_err(&SimpleMessage {
             message: format!("Cloned: {} to {}", repo_url, local_path.display()),
         })
