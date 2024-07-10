@@ -190,5 +190,10 @@
           fenixToolChain.rustfmt
         ];
       };
-    });
+    })
+    // {
+      overlays.default = final: prev: {
+        rnk = self.packages.${prev.system}.default;
+      };
+    };
 }
