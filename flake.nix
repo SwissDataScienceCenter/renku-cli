@@ -55,6 +55,7 @@
           [
             # Add additional build inputs here
             pkgs.openssl
+            pkgs.installShellFiles
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             # Additional darwin specific inputs can be set here
@@ -85,6 +86,12 @@
           inherit cargoArtifacts;
           # additional arguments to cargo for building the app, --release is already there
           cargoExtraArgs = "";
+          postInstall = ''
+            for shell in fish zsh bash; do
+               $out/bin/rnk shell-completion --shell $shell > rnk.$shell
+               installShellCompletion --$shell rnk.$shell
+            done
+          '';
         });
     in {
       checks = {
