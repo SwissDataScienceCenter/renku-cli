@@ -31,7 +31,7 @@ pub enum Error {
 }
 
 impl Input {
-    pub async fn exec<'a>(&self, ctx: &Context<'a>) -> Result<(), Error> {
+    pub async fn exec(&self, ctx: &Context) -> Result<(), Error> {
         if self.client_only {
             let vinfo = BuildInfo::default();
             ctx.write_result(&vinfo).await.context(WriteResultSnafu)?;

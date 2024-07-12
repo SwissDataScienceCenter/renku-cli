@@ -111,27 +111,52 @@ impl Client {
     /// expected structure.
     async fn json_get<R: DeserializeOwned>(&self, path: &str, debug: bool) -> Result<R, Error> {
         let url = &format!("{}{}", self.base_url, path);
+        let resp = self
+            .client
+            .get(url)
+            .send()
+            .await
+            .context(HttpSnafu { url })?;
         if debug {
-            let resp = self
-                .client
-                .get(url)
-                .send()
-                .await
-                .context(HttpSnafu { url })?
-                .text()
-                .await
-                .context(DeserializeRespSnafu)?;
-            log::debug!("GET {} -> {}", url, resp);
-            serde_json::from_str::<R>(&resp).context(DeserializeJsonSnafu)
+            let body = resp.text().await.context(DeserializeRespSnafu)?;
+            log::debug!("GET {} -> {}", url, body);
+            serde_json::from_str::<R>(&body).context(DeserializeJsonSnafu)
         } else {
-            self.client
-                .get(url)
-                .send()
-                .await
-                .context(HttpSnafu { url })?
-                .json::<R>()
-                .await
-                .context(DeserializeRespSnafu)
+            resp.json::<R>().await.context(DeserializeRespSnafu)
+        }
+    }
+
+    /// Runs a GET request to the given url. When `debug` is true, the
+    /// response is first decoded into utf8 chars and logged at debug
+    /// level. Otherwise bytes are directly decoded from JSON into the
+    /// expected structure.
+    async fn json_get_option<R: DeserializeOwned>(
+        &self,
+        path: &str,
+        debug: bool,
+    ) -> Result<Option<R>, Error> {
+        let url = &format!("{}{}", self.base_url, path);
+        let resp = self
+            .client
+            .get(url)
+            .send()
+            .await
+            .context(HttpSnafu { url })?;
+
+        if debug {
+            if resp.status() == reqwest::StatusCode::NOT_FOUND {
+                Ok(None)
+            } else {
+                let body = &resp.text().await.context(DeserializeRespSnafu)?;
+                log::debug!("GET {} -> {}", url, body);
+                let r = serde_json::from_str::<R>(body).context(DeserializeJsonSnafu)?;
+                Ok(Some(r))
+            }
+        } else if resp.status() == reqwest::StatusCode::NOT_FOUND {
+            Ok(None)
+        } else {
+            let r = resp.json::<R>().await.context(DeserializeRespSnafu)?;
+            Ok(Some(r))
         }
     }
 
@@ -152,18 +177,22 @@ impl Client {
         namespace: &str,
         slug: &str,
         debug: bool,
-    ) -> Result<ProjectDetails, Error> {
+    ) -> Result<Option<ProjectDetails>, Error> {
         log::debug!("Get project by namespace/slug: {}/{}", namespace, slug);
         let path = format!("/api/data/projects/{}/{}", namespace, slug);
-        let details = self.json_get::<ProjectDetails>(&path, debug).await?;
+        let details = self.json_get_option::<ProjectDetails>(&path, debug).await?;
         Ok(details)
     }
 
     /// Get project details by project id.
-    pub async fn get_project_by_id(&self, id: &str, debug: bool) -> Result<ProjectDetails, Error> {
+    pub async fn get_project_by_id(
+        &self,
+        id: &str,
+        debug: bool,
+    ) -> Result<Option<ProjectDetails>, Error> {
         log::debug!("Get project by id: {}", id);
         let path = format!("/api/data/projects/{}", id);
-        let details = self.json_get::<ProjectDetails>(&path, debug).await?;
+        let details = self.json_get_option::<ProjectDetails>(&path, debug).await?;
         Ok(details)
     }
 }

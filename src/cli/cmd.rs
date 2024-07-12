@@ -12,19 +12,19 @@ use snafu::{ResultExt, Snafu};
 
 const RENKULAB_IO: &str = "https://renkulab.io";
 
-pub struct Context<'a> {
-    pub opts: &'a CommonOpts,
+pub struct Context {
+    pub opts: CommonOpts,
     pub client: Client,
     pub renku_url: String,
 }
 
-impl Context<'_> {
+impl Context {
     pub fn new(opts: &CommonOpts) -> Result<Context, CmdError> {
         let base_url = get_renku_url(opts);
         let client = Client::new(&base_url, proxy_settings(opts), &None, false)
             .context(ContextCreateSnafu)?;
         Ok(Context {
-            opts,
+            opts: opts.clone(),
             client,
             renku_url: base_url,
         })

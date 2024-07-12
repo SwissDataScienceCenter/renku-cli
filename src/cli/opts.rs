@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 /// Main options are available to all commands. They must appear
 /// before a sub-command.
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command()]
 pub struct CommonOpts {
     /// Be more verbose when logging. Verbosity increases with each

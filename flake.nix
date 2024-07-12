@@ -173,7 +173,7 @@
 
         # Additional dev-shell environment variables can be set directly
         # MY_CUSTOM_DEVELOPMENT_VAR = "something else";
-        RENKU_CLI_RENKU_URL = "https://ci-renku-3668.dev.renku.ch";
+        RENKU_CLI_RENKU_URL = "https://ci-renku-3689.dev.renku.ch";
 
         # Enable mold https://github.com/rui314/mold
         CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER = "${pkgs.clang}/bin/clang";
