@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
-    name: check
+  check-linux-macos:
+    name: "check linux and macos"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -61,9 +61,25 @@ jobs:
           command: run
           args: --release --features user-doc -- user-doc ./docs
 
+  check-installer:
+    name: "check installer"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run installer
+        run: ./install.sh -v
+
+      - name: Run binary
+        run: rnk --version
+
   ci:
     runs-on: ubuntu-latest
-    needs: [check, check-win]
+    needs: [check-linux-macos, check-win, check-installer]
     steps:
       - name: Aggregate of lint, and all tests
         run: echo "ci passed"
