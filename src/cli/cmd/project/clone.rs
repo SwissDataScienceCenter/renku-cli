@@ -1,3 +1,4 @@
+use crate::config::{ConfigError, ProjectInfo, RenkuProjectConfig};
 use crate::httpclient::data::ProjectDetails;
 
 use super::Context;
@@ -9,7 +10,7 @@ use std::sync::Arc;
 use clap::Parser;
 use git2::{Error as GitError, Repository};
 use snafu::{ResultExt, Snafu};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::task::{JoinError, JoinSet};
 
 /// Clone a project.
@@ -53,6 +54,9 @@ pub enum Error {
 
     #[snafu(display("Error in task: {}", source))]
     TaskJoin { source: JoinError },
+
+    #[snafu(display("Error creating config file: {}", source))]
+    RenkuConfig { source: ConfigError },
 }
 
 impl Input {
@@ -72,6 +76,14 @@ impl Input {
         };
         if let Some(details) = opt_details {
             let target = self.target_dir()?.join(&details.slug);
+            let renku_project_cfg = RenkuProjectConfig {
+                renku_url: ctx.renku_url.clone(),
+                project: ProjectInfo {
+                    id: details.id.clone(),
+                    namespace: details.namespace.clone(),
+                    slug: details.slug.clone(),
+                },
+            };
             ctx.write_err(&SimpleMessage {
                 message: format!(
                     "Cloning {} ({}) into {}...",
@@ -82,6 +94,8 @@ impl Input {
             })
             .await
             .context(WriteResultSnafu)?;
+
+            write_config(renku_project_cfg, &target).await?;
 
             let ctx = clone_project(ctx, &details, target).await?;
             ctx.write_result(&details).await.context(WriteResultSnafu)?;
@@ -175,4 +189,11 @@ async fn clone_repository(
         .context(WriteResultSnafu)?;
     }
     Ok(())
+}
+
+async fn write_config(data: RenkuProjectConfig, local_dir: &Path) -> Result<(), Error> {
+    let target = local_dir.join(".renku").join("config.toml");
+    tokio::task::spawn_blocking(move || data.write(&target).context(RenkuConfigSnafu))
+        .await
+        .context(TaskJoinSnafu)?
 }

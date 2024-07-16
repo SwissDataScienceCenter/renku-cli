@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod config;
 pub mod error;
 pub mod httpclient;
 pub mod util;
