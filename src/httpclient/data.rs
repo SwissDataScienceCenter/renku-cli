@@ -12,17 +12,16 @@ pub enum Visibility {
     #[serde(alias = "private")]
     Private,
 }
-impl Visibility {
-    pub fn as_string(&self) -> &str {
-        match self {
-            Visibility::Private => "private",
-            Visibility::Public => "public",
-        }
-    }
-}
 impl fmt::Display for Visibility {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_string())
+        write!(
+            f,
+            "{}",
+            match self {
+                Visibility::Private => "private",
+                Visibility::Public => "public",
+            }
+        )
     }
 }
 
