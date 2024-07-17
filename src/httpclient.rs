@@ -105,21 +105,29 @@ impl Client {
         })
     }
 
+    fn make_url(&self, path: &str) -> String {
+        let mut url: &str = &format!("{}{}", self.base_url, path);
+        if path.starts_with("http") {
+            url = path;
+        }
+        url.to_string()
+    }
+
     /// Runs a GET request to the given url. When `debug` is true, the
     /// response is first decoded into utf8 chars and logged at debug
     /// level. Otherwise bytes are directly decoded from JSON into the
     /// expected structure.
     async fn json_get<R: DeserializeOwned>(&self, path: &str, debug: bool) -> Result<R, Error> {
-        let url = &format!("{}{}", self.base_url, path);
+        let url = self.make_url(path);
         let resp = self
             .client
-            .get(url)
+            .get(&url)
             .send()
             .await
-            .context(HttpSnafu { url })?;
+            .context(HttpSnafu { url: &url })?;
         if debug {
             let body = resp.text().await.context(DeserializeRespSnafu)?;
-            log::debug!("GET {} -> {}", url, body);
+            log::debug!("GET {} -> {}", &url, body);
             serde_json::from_str::<R>(&body).context(DeserializeJsonSnafu)
         } else {
             resp.json::<R>().await.context(DeserializeRespSnafu)
@@ -135,23 +143,21 @@ impl Client {
         path: &str,
         debug: bool,
     ) -> Result<Option<R>, Error> {
-        let mut url: &str = &format!("{}{}", self.base_url, path);
-        if path.starts_with("http") {
-            url = path;
-        }
+        let url = self.make_url(path);
         let resp = self
             .client
-            .get(url)
+            .get(&url)
             .send()
             .await
-            .context(HttpSnafu { url })?;
+            .context(HttpSnafu { url: &url })?;
 
         if debug {
             if resp.status() == reqwest::StatusCode::NOT_FOUND {
+                log::debug!("GET {} -> NotFound", &url);
                 Ok(None)
             } else {
                 let body = &resp.text().await.context(DeserializeRespSnafu)?;
-                log::debug!("GET {} -> {}", url, body);
+                log::debug!("GET {} -> {}", &url, body);
                 let r = serde_json::from_str::<R>(body).context(DeserializeJsonSnafu)?;
                 Ok(Some(r))
             }
