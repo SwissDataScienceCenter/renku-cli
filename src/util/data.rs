@@ -8,6 +8,7 @@ use snafu::Snafu;
 pub enum ProjectId {
     NamespaceSlug { namespace: String, slug: String },
     Id(String),
+    Url(String),
 }
 
 impl ProjectId {
@@ -17,6 +18,7 @@ impl ProjectId {
                 format!("{}/{}", namespace, slug)
             }
             ProjectId::Id(id) => id.to_string(),
+            ProjectId::Url(url) => url.to_string(),
         }
     }
 }
@@ -28,12 +30,16 @@ impl str::FromStr for ProjectId {
     type Err = ProjectIdParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.split_once('/') {
-            Some((pre, suf)) => Ok(ProjectId::NamespaceSlug {
-                namespace: pre.into(),
-                slug: suf.into(),
-            }),
-            None => Ok(ProjectId::Id(s.to_string())),
+        if s.starts_with("http") {
+            Ok(ProjectId::Url(s.to_string()))
+        } else {
+            match s.split_once('/') {
+                Some((pre, suf)) => Ok(ProjectId::NamespaceSlug {
+                    namespace: pre.into(),
+                    slug: suf.into(),
+                }),
+                None => Ok(ProjectId::Id(s.to_string())),
+            }
         }
     }
 }

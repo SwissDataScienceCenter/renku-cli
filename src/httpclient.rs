@@ -135,7 +135,10 @@ impl Client {
         path: &str,
         debug: bool,
     ) -> Result<Option<R>, Error> {
-        let url = &format!("{}{}", self.base_url, path);
+        let mut url: &str = &format!("{}{}", self.base_url, path);
+        if path.starts_with("http") {
+            url = path;
+        }
         let resp = self
             .client
             .get(url)
@@ -192,6 +195,24 @@ impl Client {
     ) -> Result<Option<ProjectDetails>, Error> {
         log::debug!("Get project by id: {}", id);
         let path = format!("/api/data/projects/{}", id);
+        let details = self.json_get_option::<ProjectDetails>(&path, debug).await?;
+        Ok(details)
+    }
+
+    pub async fn get_project_by_url(
+        &self,
+        url: &str,
+        debug: bool,
+    ) -> Result<Option<ProjectDetails>, Error> {
+        log::debug!("Get project by url: {}", url);
+        // there are different urls identifying the project
+        //   /api/data/projects/<id>
+        //   /api/data/projects/<namespace>/<slug>
+        //   /v2/projects/<id> (ui)
+        //   /v2/projects/<namespace>/<slug> (ui)
+        // the api is only the first two. Try to replace `v2` with `api/data`
+        let path = url.replace("/v2/", "/api/data/");
+        log::debug!("Transformed url to: {}", path);
         let details = self.json_get_option::<ProjectDetails>(&path, debug).await?;
         Ok(details)
     }

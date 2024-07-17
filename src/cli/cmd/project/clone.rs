@@ -19,8 +19,10 @@ use tokio::task::{JoinError, JoinSet};
 /// slug and cloning each code repository into it.
 #[derive(Parser, Debug)]
 pub struct Input {
-    /// The project to clone, identified by either its id or the
-    /// namespace/slug identifier.
+    /// The project to clone, identified by either its id, the
+    /// namespace/slug identifier or the complete url. If a complete
+    /// url is given, it will override any renku-url that might have
+    /// been given otherwise.
     #[arg()]
     pub project_ref: String,
 
@@ -71,6 +73,11 @@ impl Input {
             ProjectId::Id(id) => ctx
                 .client
                 .get_project_by_id(id, ctx.opts.verbose > 1)
+                .await
+                .context(HttpClientSnafu)?,
+            ProjectId::Url(url) => ctx
+                .client
+                .get_project_by_url(url, ctx.opts.verbose > 1)
                 .await
                 .context(HttpClientSnafu)?,
         };
