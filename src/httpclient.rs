@@ -9,7 +9,7 @@
 //! let client = httpclient::Client::new(
 //!    "https://renkulab.io",
 //!    httpclient::proxy::ProxySetting::System,
-//!    &None,
+//!    None,
 //!    false
 //! ).unwrap();
 //! async {

@@ -62,8 +62,8 @@ pub enum SubCommand {
 /// them. Each sub command has its own set of flags/options and
 /// arguments.
 ///
-/// Repository: https://github.com/SwissDataScienceCenter/renku-cli
-/// Issue tracker: https://github.com/SwissDataScienceCenter/renku-cli/issues
+/// Repository: <https://github.com/SwissDataScienceCenter/renku-cli>
+/// Issue tracker: <https://github.com/SwissDataScienceCenter/renku-cli/issues>
 #[derive(Parser, Debug)]
 #[command(name = "rnk", version)]
 pub struct MainOpts {
