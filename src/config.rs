@@ -89,7 +89,8 @@ fn write_and_read_config() {
             slug: "projecta".into(),
         },
     };
-    let target: PathBuf = "/tmp/test.conf".into();
+    let tmp = std::env::temp_dir();
+    let target = tmp.join("test.conf");
     data.write(&target).unwrap();
     let from_file = RenkuProjectConfig::read(&target).unwrap();
     std::fs::remove_file(&target).unwrap();

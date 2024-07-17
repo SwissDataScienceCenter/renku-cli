@@ -132,13 +132,15 @@ pub enum Error {
 }
 
 impl Input {
-    pub async fn exec<'a>(&self, ctx: &Context<'a>) -> Result<(), Error> {
+    pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
         let md_regex: &Regex = &self.filter_regex;
         let myself = std::env::current_exe().context(GetBinarySnafu)?;
         let bin = match &self.renku_cli {
             Some(p) => p.as_path(),
             None => myself.as_path(),
         };
+
+        let fmt = ctx.opts.format;
         let walk = file_util::visit_entries(self.files.iter())
             .try_filter(|p| future::ready(Self::path_match(&p.entry, md_regex)));
         walk.map_err(|source| Error::ListDir { source })
@@ -146,7 +148,7 @@ impl Input {
                 let result = process_markdown_file(&entry.entry, bin, &self.result_marker).await?;
                 match self.get_output() {
                     OutputOption::Stdout => {
-                        if ctx.opts.format != Format::Json {
+                        if fmt != Format::Json {
                             println!("{}", result);
                         }
                     }
@@ -161,7 +163,7 @@ impl Input {
                     entry,
                     output: result,
                 };
-                ctx.write_result(&res).await.context(WriteResultSnafu)?;
+                Sink::write(&fmt, &res).context(WriteResultSnafu)?;
                 Ok(())
             })
             .await?;
