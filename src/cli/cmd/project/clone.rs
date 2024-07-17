@@ -1,5 +1,5 @@
-use crate::config::{ConfigError, ProjectInfo, RenkuProjectConfig};
 use crate::httpclient::data::ProjectDetails;
+use crate::project_config::{ProjectConfigError, ProjectInfo, RenkuProjectConfig};
 
 use super::Context;
 use crate::cli::sink::Error as SinkError;
@@ -58,7 +58,7 @@ pub enum Error {
     TaskJoin { source: JoinError },
 
     #[snafu(display("Error creating config file: {}", source))]
-    RenkuConfig { source: ConfigError },
+    RenkuConfig { source: ProjectConfigError },
 }
 
 impl Input {

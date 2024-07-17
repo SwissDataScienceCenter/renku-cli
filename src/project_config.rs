@@ -3,7 +3,7 @@ use snafu::Snafu;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Snafu)]
-pub enum ConfigError {
+pub enum ProjectConfigError {
     #[snafu(display("Unable to read config file {}: {}", path.display(), source))]
     ReadFile {
         source: std::io::Error,
@@ -54,35 +54,35 @@ impl RenkuProjectConfig {
         }
     }
 
-    pub fn read(file: &Path) -> Result<RenkuProjectConfig, ConfigError> {
-        let cnt = std::fs::read_to_string(file).map_err(|e| ConfigError::ReadFile {
+    pub fn read(file: &Path) -> Result<RenkuProjectConfig, ProjectConfigError> {
+        let cnt = std::fs::read_to_string(file).map_err(|e| ProjectConfigError::ReadFile {
             source: e,
             path: file.to_path_buf(),
         });
         cnt.and_then(|c| {
-            toml::from_str(&c).map_err(|e| ConfigError::ParseFile {
+            toml::from_str(&c).map_err(|e| ProjectConfigError::ParseFile {
                 source: e,
                 path: file.to_path_buf(),
             })
         })
     }
 
-    pub fn write(&self, file: &Path) -> Result<(), ConfigError> {
+    pub fn write(&self, file: &Path) -> Result<(), ProjectConfigError> {
         if !file.exists() {
             if let Some(dir) = file.parent() {
-                std::fs::create_dir_all(dir).map_err(|e| ConfigError::WriteFile {
+                std::fs::create_dir_all(dir).map_err(|e| ProjectConfigError::WriteFile {
                     source: e,
                     path: file.to_path_buf(),
                 })?;
             }
         }
-        let cnt = toml::to_string(self).map_err(|e| ConfigError::WriteToml {
+        let cnt = toml::to_string(self).map_err(|e| ProjectConfigError::WriteToml {
             source: e,
             path: file.to_path_buf(),
         });
 
         cnt.and_then(|c| {
-            std::fs::write(file, c).map_err(|e| ConfigError::WriteFile {
+            std::fs::write(file, c).map_err(|e| ProjectConfigError::WriteFile {
                 source: e,
                 path: file.to_path_buf(),
             })
