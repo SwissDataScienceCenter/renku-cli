@@ -1,0 +1,23 @@
+pull_request_rules:
+  - name: label renku-bot's PRs
+    conditions:
+      - author=RenkuBot
+    actions:
+      label:
+        add: ["dependencies"]
+  - name: automatically merge renku-bot PRs on CI success
+    conditions:
+      - author=RenkuBot
+      - base=main
+      - status-success=ci
+    actions:
+      merge:
+        method: merge
+  - name: automatically merge dependabot PRs on CI success
+    conditions:
+      - author=dependabot[bot]
+      - base=main
+      - status-success=ci
+    actions:
+      merge:
+        method: merge
