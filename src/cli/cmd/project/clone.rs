@@ -83,14 +83,15 @@ impl Input {
         };
         if let Some(details) = opt_details {
             let target = self.target_dir()?.join(&details.slug);
-            let renku_project_cfg = RenkuProjectConfig {
-                renku_url: ctx.renku_url.clone(),
-                project: ProjectInfo {
+            let renku_project_cfg = RenkuProjectConfig::new(
+                &ctx.renku_url,
+                ProjectInfo {
                     id: details.id.clone(),
                     namespace: details.namespace.clone(),
                     slug: details.slug.clone(),
                 },
-            };
+            );
+
             ctx.write_err(&SimpleMessage {
                 message: format!(
                     "Cloning {} ({}) into {}...",

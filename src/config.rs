@@ -28,6 +28,9 @@ pub enum ConfigError {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct RenkuProjectConfig {
+    /// The version of this config file.
+    version: u16,
+
     /// The base url to the renku platform.
     pub renku_url: String,
 
@@ -43,6 +46,14 @@ pub struct ProjectInfo {
 }
 
 impl RenkuProjectConfig {
+    pub fn new<S: AsRef<str>>(renku_url: S, project: ProjectInfo) -> RenkuProjectConfig {
+        RenkuProjectConfig {
+            version: 1,
+            renku_url: renku_url.as_ref().into(),
+            project,
+        }
+    }
+
     pub fn read(file: &Path) -> Result<RenkuProjectConfig, ConfigError> {
         let cnt = std::fs::read_to_string(file).map_err(|e| ConfigError::ReadFile {
             source: e,
@@ -82,6 +93,7 @@ impl RenkuProjectConfig {
 #[test]
 fn write_and_read_config() {
     let data = RenkuProjectConfig {
+        version: 1,
         renku_url: "http://renkulab.io".into(),
         project: ProjectInfo {
             id: "abc123".into(),
