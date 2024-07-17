@@ -2,13 +2,14 @@ use std::fmt;
 use std::str;
 
 use serde::Serialize;
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
+use url::{ParseError as UrlParseError, Url};
 
 #[derive(Debug)]
 pub enum ProjectId {
     NamespaceSlug { namespace: String, slug: String },
     Id(String),
-    Url(String),
+    FullUrl(Url),
 }
 
 impl ProjectId {
@@ -18,20 +19,23 @@ impl ProjectId {
                 format!("{}/{}", namespace, slug)
             }
             ProjectId::Id(id) => id.to_string(),
-            ProjectId::Url(url) => url.to_string(),
+            ProjectId::FullUrl(url) => url.to_string(),
         }
     }
 }
 
 #[derive(Debug, PartialEq, Snafu)]
-pub struct ProjectIdParseError;
+pub enum ProjectIdParseError {
+    UrlParse { source: UrlParseError },
+}
 
 impl str::FromStr for ProjectId {
     type Err = ProjectIdParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.starts_with("http") {
-            Ok(ProjectId::Url(s.to_string()))
+            let u = Url::parse(s).context(UrlParseSnafu)?;
+            Ok(ProjectId::FullUrl(u))
         } else {
             match s.split_once('/') {
                 Some((pre, suf)) => Ok(ProjectId::NamespaceSlug {

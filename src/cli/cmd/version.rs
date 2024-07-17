@@ -41,7 +41,8 @@ impl Input {
                 .version(ctx.opts.verbose > 1)
                 .await
                 .context(HttpClientSnafu)?;
-            let vinfo = Versions::create(result, &ctx.renku_url);
+            let urlstr = ctx.renku_url().as_str();
+            let vinfo = Versions::create(result, urlstr);
             ctx.write_result(&vinfo).await.context(WriteResultSnafu)?;
         }
         Ok(())

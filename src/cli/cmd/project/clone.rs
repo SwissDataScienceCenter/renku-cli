@@ -75,16 +75,16 @@ impl Input {
                 .get_project_by_id(id, ctx.opts.verbose > 1)
                 .await
                 .context(HttpClientSnafu)?,
-            ProjectId::Url(url) => ctx
+            ProjectId::FullUrl(url) => ctx
                 .client
-                .get_project_by_url(url, ctx.opts.verbose > 1)
+                .get_project_by_url(url.clone(), ctx.opts.verbose > 1)
                 .await
                 .context(HttpClientSnafu)?,
         };
         if let Some(details) = opt_details {
             let target = self.target_dir()?.join(&details.slug);
             let renku_project_cfg = RenkuProjectConfig::new(
-                &ctx.renku_url,
+                ctx.renku_url().as_str(),
                 ProjectInfo {
                     id: details.id.clone(),
                     namespace: details.namespace.clone(),

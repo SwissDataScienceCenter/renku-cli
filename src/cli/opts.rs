@@ -1,5 +1,6 @@
 use super::cmd::*;
 use clap::{ArgAction, Parser, ValueEnum, ValueHint};
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -23,7 +24,7 @@ pub struct CommonOpts {
     /// The (base) URL to Renku. It can be given as environment
     /// variable RENKU_CLI_RENKU_URL.
     #[arg(long, value_hint = ValueHint::Url)]
-    pub renku_url: Option<String>,
+    pub renku_url: Option<Url>,
 
     /// Set a proxy to use for doing http requests. By default, the
     /// system proxy will be used. Can be either `none` or <url>. If

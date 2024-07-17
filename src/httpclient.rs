@@ -27,6 +27,8 @@ pub mod proxy;
 use self::data::*;
 use reqwest::Certificate;
 use reqwest::ClientBuilder;
+use reqwest::IntoUrl;
+use reqwest::Url;
 use serde::de::DeserializeOwned;
 use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
@@ -52,6 +54,9 @@ pub enum Error {
 
     #[snafu(display("An error occured reading the response: {}", source))]
     DeserializeJson { source: serde_json::Error },
+
+    #[snafu(display("Error reading url: {}", source))]
+    UrlParse { source: url::ParseError },
 }
 
 /// The renku http client.
@@ -60,21 +65,30 @@ pub enum Error {
 /// endpoints.
 pub struct Client {
     client: reqwest::Client,
-    base_url: String,
+    settings: Settings,
+}
+
+#[derive(Debug)]
+struct Settings {
+    proxy: proxy::ProxySetting,
+    trusted_certificate: Option<PathBuf>,
+    accept_invalid_certs: bool,
+    base_url: Url,
 }
 
 impl Client {
-    pub fn new<S: Into<String>>(
-        renku_url: S,
+    pub fn new<U: IntoUrl>(
+        renku_url: U,
         proxy: proxy::ProxySetting,
-        trusted_certificate: &Option<PathBuf>,
+        trusted_certificate: Option<PathBuf>,
         accept_invalid_certs: bool,
     ) -> Result<Client, Error> {
-        let url = renku_url.into();
+        let urlstr = renku_url.as_str().to_string();
+        let url = renku_url.into_url().context(HttpSnafu { url: urlstr })?;
         log::debug!("Create renku client for: {}", url);
         let mut client_builder = ClientBuilder::new().user_agent(USER_AGENT);
         client_builder = proxy.set(client_builder).context(ClientCreateSnafu)?;
-        match trusted_certificate {
+        match &trusted_certificate {
             Some(cert_file) => {
                 log::debug!(
                     "Adding extra certificate from file: {}",
@@ -101,16 +115,21 @@ impl Client {
         let client = client_builder.build().context(ClientCreateSnafu)?;
         Ok(Client {
             client,
-            base_url: url,
+            settings: Settings {
+                proxy,
+                trusted_certificate,
+                accept_invalid_certs,
+                base_url: url,
+            },
         })
     }
 
-    fn make_url(&self, path: &str) -> String {
-        let mut url: &str = &format!("{}{}", self.base_url, path);
-        if path.starts_with("http") {
-            url = path;
-        }
-        url.to_string()
+    pub fn base_url(&self) -> &Url {
+        &self.settings.base_url
+    }
+
+    fn make_url(&self, path: &str) -> Result<Url, Error> {
+        self.settings.base_url.join(path).context(UrlParseSnafu)
     }
 
     /// Runs a GET request to the given url. When `debug` is true, the
@@ -118,16 +137,17 @@ impl Client {
     /// level. Otherwise bytes are directly decoded from JSON into the
     /// expected structure.
     async fn json_get<R: DeserializeOwned>(&self, path: &str, debug: bool) -> Result<R, Error> {
-        let url = self.make_url(path);
+        let url = self.make_url(path)?;
+        log::debug!("JSON GET: {}", url);
         let resp = self
             .client
-            .get(&url)
+            .get(url.clone())
             .send()
             .await
-            .context(HttpSnafu { url: &url })?;
+            .context(HttpSnafu { url: url.clone() })?;
         if debug {
             let body = resp.text().await.context(DeserializeRespSnafu)?;
-            log::debug!("GET {} -> {}", &url, body);
+            log::debug!("GET {} -> {}", url, body);
             serde_json::from_str::<R>(&body).context(DeserializeJsonSnafu)
         } else {
             resp.json::<R>().await.context(DeserializeRespSnafu)
@@ -143,13 +163,13 @@ impl Client {
         path: &str,
         debug: bool,
     ) -> Result<Option<R>, Error> {
-        let url = self.make_url(path);
+        let url = self.make_url(path)?;
         let resp = self
             .client
-            .get(&url)
+            .get(url.clone())
             .send()
             .await
-            .context(HttpSnafu { url: &url })?;
+            .context(HttpSnafu { url: url.clone() })?;
 
         if debug {
             if resp.status() == reqwest::StatusCode::NOT_FOUND {
@@ -205,21 +225,54 @@ impl Client {
         Ok(details)
     }
 
-    pub async fn get_project_by_url(
+    pub async fn get_project_by_url<U: IntoUrl>(
         &self,
-        url: &str,
+        url: U,
         debug: bool,
     ) -> Result<Option<ProjectDetails>, Error> {
-        log::debug!("Get project by url: {}", url);
+        let urlstr = url.as_str().to_string();
+        let url = url.into_url().context(HttpSnafu { url: urlstr })?;
+        log::debug!("Get project by url: {}", &url);
         // there are different urls identifying the project
         //   /api/data/projects/<id>
         //   /api/data/projects/<namespace>/<slug>
         //   /v2/projects/<id> (ui)
         //   /v2/projects/<namespace>/<slug> (ui)
         // the api is only the first two. Try to replace `v2` with `api/data`
-        let path = url.replace("/v2/", "/api/data/");
-        log::debug!("Transformed url to: {}", path);
-        let details = self.json_get_option::<ProjectDetails>(&path, debug).await?;
+        // note the ui urls are currently not stable
+
+        let path = match url.path_segments() {
+            Some(it) => {
+                let mut seen = false;
+                it.flat_map(|s| {
+                    if s == "v2" && !seen {
+                        seen = true;
+                        vec!["api", "data"]
+                    } else {
+                        vec![s]
+                    }
+                })
+                .fold(String::new(), |a, b| a + b + "/")
+            }
+            None => url.path().to_string(),
+        };
+
+        log::debug!("Transformed path {} to: {}", url.path(), &path);
+        let mut base = url.clone();
+        base.set_path("");
+        let base_url = base.to_string();
+
+        log::debug!("Create temporary client for {}", &base_url);
+        let client = Client::new(
+            base_url,
+            self.settings.proxy.clone(),
+            self.settings.trusted_certificate.clone(),
+            self.settings.accept_invalid_certs,
+        )?;
+
+        let details = client
+            .json_get_option::<ProjectDetails>(&path, debug)
+            .await?;
         Ok(details)
     }
 }
