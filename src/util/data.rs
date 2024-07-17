@@ -12,18 +12,6 @@ pub enum ProjectId {
     FullUrl(Url),
 }
 
-impl ProjectId {
-    pub fn as_string(&self) -> String {
-        match self {
-            ProjectId::NamespaceSlug { namespace, slug } => {
-                format!("{}/{}", namespace, slug)
-            }
-            ProjectId::Id(id) => id.to_string(),
-            ProjectId::FullUrl(url) => url.to_string(),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq, Snafu)]
 pub enum ProjectIdParseError {
     UrlParse { source: UrlParseError },
@@ -50,7 +38,17 @@ impl str::FromStr for ProjectId {
 
 impl fmt::Display for ProjectId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_string())
+        write!(
+            f,
+            "{}",
+            match self {
+                ProjectId::NamespaceSlug { namespace, slug } => {
+                    format!("{}/{}", namespace, slug)
+                }
+                ProjectId::Id(id) => id.to_string(),
+                ProjectId::FullUrl(url) => url.to_string(),
+            }
+        )
     }
 }
 
