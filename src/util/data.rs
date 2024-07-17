@@ -5,7 +5,7 @@ use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 use url::{ParseError as UrlParseError, Url};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ProjectId {
     NamespaceSlug { namespace: String, slug: String },
     Id(String),

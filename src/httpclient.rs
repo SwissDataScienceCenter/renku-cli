@@ -24,6 +24,8 @@
 pub mod data;
 pub mod proxy;
 
+use crate::util::data::ProjectId;
+
 use self::data::*;
 use reqwest::Certificate;
 use reqwest::ClientBuilder;
@@ -198,6 +200,21 @@ impl Client {
             .json_get::<SearchServiceVersion>("/ui-server/api/search/version", debug)
             .await?;
         Ok(VersionInfo { search, data })
+    }
+
+    pub async fn get_project(
+        &self,
+        id: &ProjectId,
+        debug: bool,
+    ) -> Result<Option<ProjectDetails>, Error> {
+        match id {
+            ProjectId::NamespaceSlug { namespace, slug } => {
+                self.get_project_by_slug(namespace, slug, debug).await
+            }
+            ProjectId::Id(pid) => self.get_project_by_id(pid, debug).await,
+
+            ProjectId::FullUrl(url) => self.get_project_by_url(url.clone(), debug).await,
+        }
     }
 
     /// Get project details given the namespace and slug.

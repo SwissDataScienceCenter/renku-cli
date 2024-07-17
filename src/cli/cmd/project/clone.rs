@@ -24,12 +24,12 @@ pub struct Input {
     /// url is given, it will override any renku-url that might have
     /// been given otherwise.
     #[arg()]
-    pub project_ref: String,
+    pub project_ref: ProjectId,
 
     /// Optional target directory to create the project in. By default
     /// the current working directory is used.
     #[arg()]
-    pub target_dir: Option<String>,
+    pub target_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Snafu)]
@@ -63,24 +63,11 @@ pub enum Error {
 
 impl Input {
     pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
-        let project_id = self.project_id()?;
-        let opt_details = match &project_id {
-            ProjectId::NamespaceSlug { namespace, slug } => ctx
-                .client
-                .get_project_by_slug(namespace, slug, ctx.opts.verbose > 1)
-                .await
-                .context(HttpClientSnafu)?,
-            ProjectId::Id(id) => ctx
-                .client
-                .get_project_by_id(id, ctx.opts.verbose > 1)
-                .await
-                .context(HttpClientSnafu)?,
-            ProjectId::FullUrl(url) => ctx
-                .client
-                .get_project_by_url(url.clone(), ctx.opts.verbose > 1)
-                .await
-                .context(HttpClientSnafu)?,
-        };
+        let opt_details = ctx
+            .client
+            .get_project(&self.project_ref, ctx.opts.verbose > 1)
+            .await
+            .context(HttpClientSnafu)?;
         if let Some(details) = opt_details {
             let target = self.target_dir()?.join(&details.slug);
             let renku_project_cfg = RenkuProjectConfig::new(
@@ -109,18 +96,12 @@ impl Input {
             ctx.write_result(&details).await.context(WriteResultSnafu)?;
         } else {
             ctx.write_err(&SimpleMessage {
-                message: format!("Project '{}' doesn't exist.", &project_id),
+                message: format!("Project '{}' doesn't exist.", &self.project_ref),
             })
             .await
             .context(WriteResultSnafu)?;
         }
         Ok(())
-    }
-
-    fn project_id(&self) -> Result<ProjectId, Error> {
-        self.project_ref
-            .parse::<ProjectId>()
-            .context(ProjectIdParseSnafu)
     }
 
     fn target_dir(&self) -> Result<PathBuf, Error> {
