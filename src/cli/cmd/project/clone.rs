@@ -58,6 +58,9 @@ pub enum Error {
 
     #[snafu(display("Error creating config file: {}", source))]
     RenkuConfig { source: ProjectConfigError },
+
+    #[snafu(display("The project name is missing: {}", repo_url))]
+    MissingProjectName { repo_url: String },
 }
 
 impl Input {
@@ -142,9 +145,11 @@ async fn clone_repository(
     dir: Arc<PathBuf>,
 ) -> Result<(), Error> {
     let name = match repo_url.rsplit_once('/') {
-        Some((_, n)) => n,
-        None => "no-name",
-    };
+        Some((_, n)) => Ok(n),
+        None => Err(Error::MissingProjectName {
+            repo_url: repo_url.clone(),
+        }),
+    }?;
     let local_path = dir.join(name);
     if local_path.exists() {
         ctx.write_err(&SimpleMessage {
