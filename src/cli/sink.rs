@@ -17,7 +17,7 @@ pub trait Sink
 where
     Self: Serialize + Display,
 {
-    fn write(format: &Format, value: &Self) -> Result<(), Error> {
+    fn write_out(format: &Format, value: &Self) -> Result<(), Error> {
         match format {
             Format::Json => {
                 serde_json::to_writer(std::io::stdout(), value)?;

@@ -33,10 +33,10 @@ impl Context {
         self.client.base_url()
     }
 
-    /// A short hand for `Sink::write(self.format(), value)`
+    /// A short hand for `Sink::write_out(self.format(), value)`
     async fn write_result<A: Sink + Serialize>(&self, value: &A) -> Result<(), SinkError> {
         let fmt = self.opts.format;
-        Sink::write(&fmt, value)
+        Sink::write_out(&fmt, value)
     }
 
     /// A short hand for `Sink::write_err(self.format(), value)`

@@ -163,7 +163,7 @@ impl Input {
                     entry,
                     output: result,
                 };
-                Sink::write(&fmt, &res).context(WriteResultSnafu)?;
+                Sink::write_out(&fmt, &res).context(WriteResultSnafu)?;
                 Ok(())
             })
             .await?;
