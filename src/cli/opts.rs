@@ -54,6 +54,10 @@ pub enum SubCommand {
     #[command()]
     Project(project::Input),
 
+    /// Clone a project. (Shortcut for 'project clone')
+    #[command()]
+    Clone(project::clone::Input),
+
     #[cfg(feature = "user-doc")]
     UserDoc(userdoc::Input),
 }
