@@ -25,6 +25,8 @@ pub async fn execute_cmd(opts: MainOpts) -> Result<(), CmdError> {
             .await
             .map_err(|source| ProjectError::Clone { source })?,
 
+        SubCommand::Login(input) => input.exec(&ctx).await?,
+
         #[cfg(feature = "user-doc")]
         SubCommand::UserDoc(input) => input.exec(ctx).await?,
     };

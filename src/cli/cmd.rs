@@ -1,3 +1,4 @@
+pub mod login;
 pub mod project;
 pub mod shell_completion;
 #[cfg(feature = "user-doc")]
@@ -97,6 +98,9 @@ pub enum CmdError {
     #[snafu(display("Project - {}", source))]
     Project { source: project::Error },
 
+    #[snafu(display("Login - {}", source))]
+    Login { source: login::Error },
+
     #[cfg(feature = "user-doc")]
     #[snafu(display("UserDoc - {}", source))]
     UserDoc { source: userdoc::Error },
@@ -118,5 +122,11 @@ impl From<project::Error> for CmdError {
 impl From<userdoc::Error> for CmdError {
     fn from(source: userdoc::Error) -> Self {
         CmdError::UserDoc { source }
+    }
+}
+
+impl From<login::Error> for CmdError {
+    fn from(source: login::Error) -> Self {
+        CmdError::Login { source }
     }
 }
