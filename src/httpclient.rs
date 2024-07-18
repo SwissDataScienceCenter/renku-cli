@@ -6,8 +6,10 @@
 //!
 //! ```rust
 //! use rnk::httpclient;
+//! use rnk::data::renku_url::RenkuUrl;
+//!
 //! let client = httpclient::Client::new(
-//!    "https://renkulab.io",
+//!    RenkuUrl::parse("https://renkulab.io").unwrap(),
 //!    httpclient::proxy::ProxySetting::System,
 //!    None,
 //!    false
