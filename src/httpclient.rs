@@ -24,7 +24,8 @@
 pub mod data;
 pub mod proxy;
 
-use crate::util::data::ProjectId;
+use crate::data::project_id::ProjectId;
+use crate::data::renku_url::RenkuUrl;
 
 use self::data::*;
 use reqwest::Certificate;
@@ -75,19 +76,17 @@ struct Settings {
     proxy: proxy::ProxySetting,
     trusted_certificate: Option<PathBuf>,
     accept_invalid_certs: bool,
-    base_url: Url,
+    base_url: RenkuUrl,
 }
 
 impl Client {
-    pub fn new<U: IntoUrl>(
-        renku_url: U,
+    pub fn new(
+        renku_url: RenkuUrl,
         proxy: proxy::ProxySetting,
         trusted_certificate: Option<PathBuf>,
         accept_invalid_certs: bool,
     ) -> Result<Client, Error> {
-        let urlstr = renku_url.as_str().to_string();
-        let url = renku_url.into_url().context(HttpSnafu { url: urlstr })?;
-        log::debug!("Create renku client for: {}", url);
+        log::debug!("Create renku client for: {}", renku_url);
         let mut client_builder = ClientBuilder::new().user_agent(USER_AGENT);
         client_builder = proxy.set(client_builder).context(ClientCreateSnafu)?;
         match &trusted_certificate {
@@ -121,17 +120,21 @@ impl Client {
                 proxy,
                 trusted_certificate,
                 accept_invalid_certs,
-                base_url: url,
+                base_url: renku_url,
             },
         })
     }
 
-    pub fn base_url(&self) -> &Url {
+    pub fn base_url(&self) -> &RenkuUrl {
         &self.settings.base_url
     }
 
     fn make_url(&self, path: &str) -> Result<Url, Error> {
-        self.settings.base_url.join(path).context(UrlParseSnafu)
+        self.settings
+            .base_url
+            .as_url()
+            .join(path)
+            .context(UrlParseSnafu)
     }
 
     /// Runs a GET request to the given url. When `debug` is true, the
@@ -213,7 +216,7 @@ impl Client {
             }
             ProjectId::Id(pid) => self.get_project_by_id(pid, debug).await,
 
-            ProjectId::FullUrl(url) => self.get_project_by_url(url.clone(), debug).await,
+            ProjectId::FullUrl(url) => self.get_project_by_url(url.as_url().clone(), debug).await,
         }
     }
 
@@ -277,7 +280,7 @@ impl Client {
         log::debug!("Transformed path {} to: {}", url.path(), &path);
         let mut base = url.clone();
         base.set_path("");
-        let base_url = base.to_string();
+        let base_url = RenkuUrl::new(base);
 
         log::debug!("Create temporary client for {}", &base_url);
         let client = Client::new(

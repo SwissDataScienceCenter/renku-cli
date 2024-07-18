@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use snafu::Snafu;
 use std::path::{Path, PathBuf};
 
+use crate::data::renku_url::RenkuUrl;
+
 #[derive(Debug, Snafu)]
 pub enum ProjectConfigError {
     #[snafu(display("Unable to read config file {}: {}", path.display(), source))]
@@ -32,7 +34,7 @@ pub struct RenkuProjectConfig {
     version: u16,
 
     /// The base url to the renku platform.
-    pub renku_url: String,
+    pub renku_url: RenkuUrl,
 
     /// Information about the project
     pub project: ProjectInfo,
@@ -46,10 +48,10 @@ pub struct ProjectInfo {
 }
 
 impl RenkuProjectConfig {
-    pub fn new<S: AsRef<str>>(renku_url: S, project: ProjectInfo) -> RenkuProjectConfig {
+    pub fn new(renku_url: RenkuUrl, project: ProjectInfo) -> RenkuProjectConfig {
         RenkuProjectConfig {
             version: 1,
-            renku_url: renku_url.as_ref().into(),
+            renku_url,
             project,
         }
     }
@@ -94,7 +96,7 @@ impl RenkuProjectConfig {
 fn write_and_read_config() {
     let data = RenkuProjectConfig {
         version: 1,
-        renku_url: "http://renkulab.io".into(),
+        renku_url: RenkuUrl::parse("http://renkulab.io").unwrap(),
         project: ProjectInfo {
             id: "abc123".into(),
             namespace: "my-ns".into(),

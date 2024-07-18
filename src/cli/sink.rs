@@ -1,6 +1,6 @@
 use crate::cli::opts::Format;
+use crate::data::simple_message::SimpleMessage;
 use crate::httpclient::data::*;
-use crate::util::data::*;
 use crate::util::file::PathEntry;
 use serde::Serialize;
 use snafu::Snafu;

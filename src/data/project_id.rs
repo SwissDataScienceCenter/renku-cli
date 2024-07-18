@@ -1,15 +1,17 @@
 use std::fmt;
-use std::str;
+use std::str::FromStr;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-use url::{ParseError as UrlParseError, Url};
+use url::ParseError as UrlParseError;
 
-#[derive(Debug, Clone)]
+use super::renku_url::RenkuUrl;
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ProjectId {
     NamespaceSlug { namespace: String, slug: String },
     Id(String),
-    FullUrl(Url),
+    FullUrl(RenkuUrl),
 }
 
 #[derive(Debug, PartialEq, Snafu)]
@@ -17,12 +19,18 @@ pub enum ProjectIdParseError {
     UrlParse { source: UrlParseError },
 }
 
-impl str::FromStr for ProjectId {
+impl ProjectId {
+    pub fn parse(s: &str) -> Result<ProjectId, ProjectIdParseError> {
+        s.parse::<ProjectId>()
+    }
+}
+
+impl FromStr for ProjectId {
     type Err = ProjectIdParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.starts_with("http") {
-            let u = Url::parse(s).context(UrlParseSnafu)?;
+            let u = RenkuUrl::parse(s).context(UrlParseSnafu)?;
             Ok(ProjectId::FullUrl(u))
         } else {
             match s.split_once('/') {
@@ -52,13 +60,18 @@ impl fmt::Display for ProjectId {
     }
 }
 
-#[derive(Debug, Serialize)]
-pub struct SimpleMessage {
-    pub message: String,
-}
+#[test]
+fn read_to_string() {
+    let id1 = ProjectId::NamespaceSlug {
+        namespace: "n1".into(),
+        slug: "s1".into(),
+    };
+    let id2 = ProjectId::Id("pr-id-42".into());
+    let id3 = ProjectId::FullUrl(RenkuUrl::parse("http://localhost/project/1").unwrap());
 
-impl fmt::Display for SimpleMessage {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.message)
+    for id in vec![id1, id2, id3] {
+        let id_str = format!("{}", id);
+        let id_parsed = ProjectId::parse(&id_str).unwrap();
+        assert_eq!(id, id_parsed);
     }
 }

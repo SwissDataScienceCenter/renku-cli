@@ -3,8 +3,9 @@ use crate::project_config::{ProjectConfigError, ProjectInfo, RenkuProjectConfig}
 
 use super::Context;
 use crate::cli::sink::Error as SinkError;
+use crate::data::project_id::{ProjectId, ProjectIdParseError};
+use crate::data::simple_message::SimpleMessage;
 use crate::httpclient::Error as HttpError;
-use crate::util::data::{ProjectId, SimpleMessage};
 use std::sync::Arc;
 
 use clap::Parser;
@@ -41,9 +42,7 @@ pub enum Error {
     WriteResult { source: SinkError },
 
     #[snafu(display("Error reading project id: {}", source))]
-    ProjectIdParse {
-        source: crate::util::data::ProjectIdParseError,
-    },
+    ProjectIdParse { source: ProjectIdParseError },
 
     #[snafu(display("Error getting current directory: {}", source))]
     CurrentDir { source: std::io::Error },
@@ -71,7 +70,7 @@ impl Input {
         if let Some(details) = opt_details {
             let target = self.target_dir()?.join(&details.slug);
             let renku_project_cfg = RenkuProjectConfig::new(
-                ctx.renku_url().as_str(),
+                ctx.renku_url().clone(),
                 ProjectInfo {
                     id: details.id.clone(),
                     namespace: details.namespace.clone(),

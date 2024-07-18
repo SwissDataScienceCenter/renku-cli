@@ -6,8 +6,8 @@ pub mod version;
 
 use super::sink::{Error as SinkError, Sink};
 use crate::cli::opts::{CommonOpts, ProxySetting};
+use crate::data::renku_url::RenkuUrl;
 use crate::httpclient::{self, proxy, Client};
-use reqwest::Url;
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 
@@ -29,7 +29,7 @@ impl Context {
         })
     }
 
-    pub fn renku_url(&self) -> &Url {
+    pub fn renku_url(&self) -> &RenkuUrl {
         self.client.base_url()
     }
 
@@ -46,7 +46,7 @@ impl Context {
     }
 }
 
-fn get_renku_url(opts: &CommonOpts) -> Result<Url, CmdError> {
+fn get_renku_url(opts: &CommonOpts) -> Result<RenkuUrl, CmdError> {
     match &opts.renku_url {
         Some(u) => {
             log::debug!("Use renku url from arguments: {}", u);
@@ -55,13 +55,13 @@ fn get_renku_url(opts: &CommonOpts) -> Result<Url, CmdError> {
         None => match std::env::var("RENKU_CLI_RENKU_URL").ok() {
             Some(u) => {
                 log::debug!("Use renku url from env RENKU_CLI_RENKU_URL: {}", u);
-                Url::parse(&u).map_err(|e| CmdError::ContextCreate {
+                RenkuUrl::parse(&u).map_err(|e| CmdError::ContextCreate {
                     source: httpclient::Error::UrlParse { source: e },
                 })
             }
             None => {
                 log::debug!("Use renku url: https://renkulab.io");
-                Url::parse(RENKULAB_IO).map_err(|e| CmdError::ContextCreate {
+                RenkuUrl::parse(RENKULAB_IO).map_err(|e| CmdError::ContextCreate {
                     source: httpclient::Error::UrlParse { source: e },
                 })
             }
