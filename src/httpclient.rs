@@ -23,6 +23,8 @@
 //!
 //! TODO
 
+pub mod auth;
+mod cache;
 pub mod data;
 pub mod proxy;
 
@@ -30,9 +32,12 @@ use crate::data::project_id::ProjectId;
 use crate::data::renku_url::RenkuUrl;
 
 use self::data::*;
+use auth::Response;
+use auth::UserCode;
 use reqwest::Certificate;
 use reqwest::ClientBuilder;
 use reqwest::IntoUrl;
+use reqwest::RequestBuilder;
 use reqwest::Url;
 use serde::de::DeserializeOwned;
 use snafu::{ResultExt, Snafu};
@@ -62,6 +67,12 @@ pub enum Error {
 
     #[snafu(display("Error reading url: {}", source))]
     UrlParse { source: url::ParseError },
+
+    #[snafu(transparent)]
+    Auth { source: auth::AuthError },
+
+    #[snafu(transparent)]
+    Cache { source: cache::Error },
 }
 
 /// The renku http client.
@@ -71,6 +82,7 @@ pub enum Error {
 pub struct Client {
     client: reqwest::Client,
     settings: Settings,
+    auth_data: Option<Response>,
 }
 
 #[derive(Debug)]
@@ -115,9 +127,11 @@ impl Client {
             }
         }
 
+        let auth_data = cache::read_auth_token()?;
         let client = client_builder.build().context(ClientCreateSnafu)?;
         Ok(Client {
             client,
+            auth_data,
             settings: Settings {
                 proxy,
                 trusted_certificate,
@@ -139,6 +153,13 @@ impl Client {
             .context(UrlParseSnafu)
     }
 
+    fn set_bearer_token(&self, b: RequestBuilder) -> RequestBuilder {
+        match &self.auth_data {
+            Some(d) => b.bearer_auth(auth::access_token(&d.response)),
+            None => b,
+        }
+    }
+
     /// Runs a GET request to the given url. When `debug` is true, the
     /// response is first decoded into utf8 chars and logged at debug
     /// level. Otherwise bytes are directly decoded from JSON into the
@@ -147,8 +168,7 @@ impl Client {
         let url = self.make_url(path)?;
         log::debug!("JSON GET: {}", url);
         let resp = self
-            .client
-            .get(url.clone())
+            .set_bearer_token(self.client.get(url.clone()))
             .send()
             .await
             .context(HttpSnafu { url: url.clone() })?;
@@ -172,8 +192,7 @@ impl Client {
     ) -> Result<Option<R>, Error> {
         let url = self.make_url(path)?;
         let resp = self
-            .client
-            .get(url.clone())
+            .set_bearer_token(self.client.get(url.clone()))
             .send()
             .await
             .context(HttpSnafu { url: url.clone() })?;
@@ -296,5 +315,16 @@ impl Client {
             .json_get_option::<ProjectDetails>(&path, debug)
             .await?;
         Ok(details)
+    }
+
+    pub async fn start_login_flow(&self) -> Result<UserCode, Error> {
+        let c = auth::get_user_code(self.settings.base_url.clone()).await?;
+        Ok(c)
+    }
+
+    pub async fn complete_login_flow(&self, code: UserCode) -> Result<Response, Error> {
+        let r = auth::poll_tokens(code).await?;
+        cache::write_auth_token(&r).await?;
+        Ok(r)
     }
 }

@@ -1,16 +1,44 @@
-use super::Context;
-use crate::cli::sink::Error as SinkError;
-use crate::httpclient::Error as HttpError;
-use clap::Parser;
-use openidconnect::core::*;
-use openidconnect::reqwest::async_http_client;
-use openidconnect::*;
-use serde::{Deserialize, Serialize};
-use snafu::Snafu;
+use std::path::{Path, PathBuf};
 
-/// Performs a login
+use super::Context;
+use crate::httpclient::auth::UserCode;
+use crate::httpclient::Error as HttpError;
+use crate::{cli::sink::Error as SinkError, data::simple_message::SimpleMessage};
+use clap::{Parser, ValueHint};
+
+use snafu::{ResultExt, Snafu};
+
+/// Performs a login to renku.
+///
+/// The login consists of two parts:
+///
+/// 1. Renku is queried to return a temporary URL that can be used to
+/// authenticate and authorize this application. The url must be
+/// opened with some device and the user code must be entered (if
+/// necessary).
+///
+/// 2. Once the first step is complete, the cli can obtain an access
+/// token and does so by periodically polling the renku platform.
+///
+/// The login command can do these two steps separately. This requires
+/// to run with `--user-code-only` to omit the second step and store
+/// the JSON output to some file. Later, run with `--continue-from`
+/// specifying the path to that file to continue the login process.
+///
+/// When the token is received, it is stored in the application data
+/// folder of your system. Once it expires, the login process must be
+/// repeated.
 #[derive(Parser, Debug, PartialEq)]
-pub struct Input {}
+pub struct Input {
+    /// Do not poll for the access token, only print the user code information.
+    #[clap(long, default_value_t = false, group = "steps")]
+    pub user_code_only: bool,
+
+    /// Given the (json) output of the first step, continue by polling
+    /// for the access token.
+    #[clap(long, value_hint = ValueHint::FilePath, group = "steps")]
+    pub continue_from: Option<PathBuf>,
+}
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -19,86 +47,73 @@ pub enum Error {
 
     #[snafu(display("Error writing data: {}", source))]
     WriteResult { source: SinkError },
+
+    #[snafu(display("Reading file {} failed: {}", file.display(), source))]
+    FileRead {
+        source: std::io::Error,
+        file: PathBuf,
+    },
+    #[snafu(display("Error decoding user code data: {}", source))]
+    JsonDecode { source: serde_json::Error },
 }
 
-// Obtain the device_authorization_url from the OIDC metadata provider.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-struct DeviceEndpointProviderMetadata {
-    device_authorization_endpoint: DeviceAuthorizationUrl,
+#[derive(Clone, Debug, PartialEq)]
+enum Steps<'a> {
+    UserCode,
+    Continue(&'a Path),
+    Complete,
 }
-impl AdditionalProviderMetadata for DeviceEndpointProviderMetadata {}
-type DeviceProviderMetadata = ProviderMetadata<
-    DeviceEndpointProviderMetadata,
-    CoreAuthDisplay,
-    CoreClientAuthMethod,
-    CoreClaimName,
-    CoreClaimType,
-    CoreGrantType,
-    CoreJweContentEncryptionAlgorithm,
-    CoreJweKeyManagementAlgorithm,
-    CoreJwsSigningAlgorithm,
-    CoreJsonWebKeyType,
-    CoreJsonWebKeyUse,
-    CoreJsonWebKey,
-    CoreResponseMode,
-    CoreResponseType,
-    CoreSubjectIdentifierType,
->;
+impl Input {
+    fn get_steps(&self) -> Steps {
+        if let Some(p) = &self.continue_from {
+            Steps::Continue(p)
+        } else if self.user_code_only {
+            Steps::UserCode
+        } else {
+            Steps::Complete
+        }
+    }
+}
 
 impl Input {
     pub async fn exec(&self, ctx: &Context) -> Result<(), Error> {
-        let issuer_url = IssuerUrl::new(
-            ctx.renku_url()
-                .join("auth/realms/Renku")
-                .unwrap()
-                .as_str()
-                .to_string(),
-        )
-        .unwrap();
+        let steps = self.get_steps();
+        if let Steps::Continue(file) = &self.get_steps() {
+            let buf = tokio::fs::read(file)
+                .await
+                .context(FileReadSnafu { file })?;
+            let info = serde_json::from_slice::<UserCode>(&buf).context(JsonDecodeSnafu)?;
+            let resp = ctx
+                .client
+                .complete_login_flow(info)
+                .await
+                .context(HttpClientSnafu)?;
 
-        let metadata = DeviceProviderMetadata::discover_async(issuer_url, async_http_client)
-            .await
-            .unwrap();
+            dbg!(&resp);
+        } else {
+            let info = ctx
+                .client
+                .start_login_flow()
+                .await
+                .context(HttpClientSnafu)?;
 
-        println!(
-            "device auth: {:?}",
-            metadata.additional_metadata().device_authorization_endpoint
-        );
+            ctx.write_result(&info).await.context(WriteResultSnafu)?;
 
-        let client_id = ClientId::new("renku-cli".into());
-        let device_url = metadata
-            .additional_metadata()
-            .device_authorization_endpoint
-            .clone();
-        let client = CoreClient::from_provider_metadata(metadata, client_id, None)
-            .set_device_authorization_uri(device_url)
-            .set_auth_type(AuthType::RequestBody);
+            if steps == Steps::Complete {
+                ctx.write_result(&SimpleMessage {
+                    message: "The program will continue automatically…".into(),
+                })
+                .await
+                .context(WriteResultSnafu)?;
+                let resp = ctx
+                    .client
+                    .complete_login_flow(info)
+                    .await
+                    .context(HttpClientSnafu)?;
 
-        let details: CoreDeviceAuthorizationResponse = client
-            .exchange_device_code()
-            .unwrap()
-            .request_async(async_http_client)
-            .await
-            .unwrap();
-        println!("Fetching device code...");
-        dbg!(&details);
-
-        // Display the URL and user-code.
-        println!(
-            "Open this URL in your browser:\n{}\nand enter the code: {}",
-            details.verification_uri_complete().unwrap().secret(),
-            details.user_code().secret()
-        );
-
-        // poll for the token
-        let token = client
-            .exchange_device_access_token(&details)
-            .request_async(async_http_client, tokio::time::sleep, None)
-            .await
-            .unwrap();
-
-        println!("ID Token: {:?}", token.extra_fields().id_token());
-
+                dbg!(&resp);
+            }
+        }
         Ok(())
     }
 }

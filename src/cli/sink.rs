@@ -1,10 +1,12 @@
 use crate::cli::opts::Format;
 use crate::data::simple_message::SimpleMessage;
+use crate::httpclient::auth::UserCode;
 use crate::httpclient::data::*;
 use crate::util::file::PathEntry;
 use serde::Serialize;
 use snafu::Snafu;
 use std::fmt::Display;
+use std::io::{self, Write};
 
 use super::BuildInfo;
 
@@ -21,10 +23,12 @@ where
         match format {
             Format::Json => {
                 serde_json::to_writer(std::io::stdout(), value)?;
+                io::stdout().flush().unwrap_or(());
                 Ok(())
             }
             Format::Default => {
                 println!("{}", value);
+                io::stdout().flush().unwrap_or(());
                 Ok(())
             }
         }
@@ -33,10 +37,12 @@ where
         match format {
             Format::Json => {
                 serde_json::to_writer(std::io::stderr(), value)?;
+                io::stderr().flush().unwrap_or(());
                 Ok(())
             }
             Format::Default => {
                 eprintln!("{}", value);
+                io::stderr().flush().unwrap_or(());
                 Ok(())
             }
         }
@@ -53,3 +59,4 @@ impl Sink for ProjectDetails {}
 impl Sink for SimpleMessage {}
 impl Sink for BuildInfo {}
 impl Sink for PathEntry {}
+impl Sink for UserCode {}
