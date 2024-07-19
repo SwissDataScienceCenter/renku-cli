@@ -3,8 +3,15 @@ allow = [
   "MIT",
   "Apache-2.0",
   "0BSD",
-  "Unicode-DFS-2016"
+  "Unicode-DFS-2016",
+  "ISC",
+  "BSD-3-Clause"
 ]
+
+[[licenses.clarify]]
+crate = "ring"
+expression = "ISC"
+license-files = []
 
 [advisories]
 version = 2
