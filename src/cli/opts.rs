@@ -1,3 +1,5 @@
+use crate::data::renku_url::RenkuUrl;
+
 use super::cmd::*;
 use clap::{ArgAction, Parser, ValueEnum, ValueHint};
 use serde::{Deserialize, Serialize};
@@ -5,7 +7,7 @@ use std::str::FromStr;
 
 /// Main options are available to all commands. They must appear
 /// before a sub-command.
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command()]
 pub struct CommonOpts {
     /// Be more verbose when logging. Verbosity increases with each
@@ -23,7 +25,7 @@ pub struct CommonOpts {
     /// The (base) URL to Renku. It can be given as environment
     /// variable RENKU_CLI_RENKU_URL.
     #[arg(long, value_hint = ValueHint::Url)]
-    pub renku_url: Option<String>,
+    pub renku_url: Option<RenkuUrl>,
 
     /// Set a proxy to use for doing http requests. By default, the
     /// system proxy will be used. Can be either `none` or <url>. If
@@ -52,6 +54,10 @@ pub enum SubCommand {
     #[command()]
     Project(project::Input),
 
+    /// Clone a project. (Shortcut for 'project clone')
+    #[command()]
+    Clone(project::clone::Input),
+
     #[cfg(feature = "user-doc")]
     UserDoc(userdoc::Input),
 }
@@ -61,8 +67,8 @@ pub enum SubCommand {
 /// them. Each sub command has its own set of flags/options and
 /// arguments.
 ///
-/// Repository: https://github.com/SwissDataScienceCenter/renku-cli
-/// Issue tracker: https://github.com/SwissDataScienceCenter/renku-cli/issues
+/// Repository: <https://github.com/SwissDataScienceCenter/renku-cli>
+/// Issue tracker: <https://github.com/SwissDataScienceCenter/renku-cli/issues>
 #[derive(Parser, Debug)]
 #[command(name = "rnk", version)]
 pub struct MainOpts {

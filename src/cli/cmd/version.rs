@@ -14,7 +14,12 @@ use std::fmt;
 /// Queries the server for its version information and prints more
 /// version details about this client.
 #[derive(Parser, Debug, PartialEq)]
-pub struct Input {}
+pub struct Input {
+    /// Only show the client version and don't request server side
+    /// version information.
+    #[arg(long, default_value_t = false)]
+    pub client_only: bool,
+}
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -26,14 +31,20 @@ pub enum Error {
 }
 
 impl Input {
-    pub async fn exec<'a>(&self, ctx: &Context<'a>) -> Result<(), Error> {
-        let result = ctx
-            .client
-            .version(ctx.opts.verbose > 1)
-            .await
-            .context(HttpClientSnafu)?;
-        let vinfo = Versions::create(result, &ctx.renku_url);
-        ctx.write_result(&vinfo).await.context(WriteResultSnafu)?;
+    pub async fn exec(&self, ctx: &Context) -> Result<(), Error> {
+        if self.client_only {
+            let vinfo = BuildInfo::default();
+            ctx.write_result(&vinfo).await.context(WriteResultSnafu)?;
+        } else {
+            let result = ctx
+                .client
+                .version(ctx.opts.verbose > 1)
+                .await
+                .context(HttpClientSnafu)?;
+            let urlstr = ctx.renku_url().as_str();
+            let vinfo = Versions::create(result, urlstr);
+            ctx.write_result(&vinfo).await.context(WriteResultSnafu)?;
+        }
         Ok(())
     }
 }

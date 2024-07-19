@@ -2,6 +2,7 @@ pub mod cmd;
 pub mod opts;
 pub mod sink;
 
+use self::cmd::project::Error as ProjectError;
 use self::cmd::{CmdError, Context};
 use self::opts::{MainOpts, SubCommand};
 use clap::CommandFactory;
@@ -18,10 +19,14 @@ pub async fn execute_cmd(opts: MainOpts) -> Result<(), CmdError> {
             let mut app = MainOpts::command();
             input.print_completions(&mut app).await;
         }
-        SubCommand::Project(input) => input.exec(&ctx).await?,
+        SubCommand::Project(input) => input.exec(ctx).await?,
+        SubCommand::Clone(input) => input
+            .exec(ctx)
+            .await
+            .map_err(|source| ProjectError::Clone { source })?,
 
         #[cfg(feature = "user-doc")]
-        SubCommand::UserDoc(input) => input.exec(&ctx).await?,
+        SubCommand::UserDoc(input) => input.exec(ctx).await?,
     };
     Ok(())
 }

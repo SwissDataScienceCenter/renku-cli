@@ -6,6 +6,7 @@ use snafu::{ResultExt, Snafu};
 
 #[derive(Debug, Snafu)]
 pub enum Error {
+    #[snafu(display("Error cloning project: {}", source))]
     Clone { source: clone::Error },
 }
 
@@ -17,7 +18,7 @@ pub struct Input {
 }
 
 impl Input {
-    pub async fn exec<'a>(&self, ctx: &Context<'a>) -> Result<(), Error> {
+    pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
         match &self.subcmd {
             ProjectCommand::Clone(input) => input.exec(ctx).await.context(CloneSnafu),
         }

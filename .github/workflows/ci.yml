@@ -61,9 +61,12 @@ jobs:
           command: run
           args: --release --features user-doc -- user-doc ./docs
 
+  # check installer on main only, as we reach the github api limit too
+  # quickly
   check-installer:
     name: "check installer"
     runs-on: ${{ matrix.os }}
+    if: github.ref == 'refs/heads/main'
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]

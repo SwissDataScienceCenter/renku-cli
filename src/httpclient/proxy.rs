@@ -1,6 +1,7 @@
 use reqwest::ClientBuilder;
 use reqwest::{Proxy, Result};
 
+#[derive(Debug, Clone)]
 pub enum ProxySetting {
     System,
     None,

@@ -6,51 +6,64 @@ pub mod version;
 
 use super::sink::{Error as SinkError, Sink};
 use crate::cli::opts::{CommonOpts, ProxySetting};
+use crate::data::renku_url::RenkuUrl;
 use crate::httpclient::{self, proxy, Client};
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 
 const RENKULAB_IO: &str = "https://renkulab.io";
 
-pub struct Context<'a> {
-    pub opts: &'a CommonOpts,
+pub struct Context {
+    pub opts: CommonOpts,
     pub client: Client,
-    pub renku_url: String,
 }
 
-impl Context<'_> {
+impl Context {
     pub fn new(opts: &CommonOpts) -> Result<Context, CmdError> {
-        let base_url = get_renku_url(opts);
-        let client = Client::new(&base_url, proxy_settings(opts), &None, false)
-            .context(ContextCreateSnafu)?;
+        let base_url = get_renku_url(opts)?;
+        let client =
+            Client::new(base_url, proxy_settings(opts), None, false).context(ContextCreateSnafu)?;
         Ok(Context {
-            opts,
+            opts: opts.clone(),
             client,
-            renku_url: base_url,
         })
     }
 
-    /// A short hand for `Sink::write(self.format(), value)`
+    pub fn renku_url(&self) -> &RenkuUrl {
+        self.client.base_url()
+    }
+
+    /// A short hand for `Sink::write_out(self.format(), value)`
     async fn write_result<A: Sink + Serialize>(&self, value: &A) -> Result<(), SinkError> {
         let fmt = self.opts.format;
-        Sink::write(&fmt, value)
+        Sink::write_out(&fmt, value)
+    }
+
+    /// A short hand for `Sink::write_err(self.format(), value)`
+    async fn write_err<A: Sink + Serialize>(&self, value: &A) -> Result<(), SinkError> {
+        let fmt = self.opts.format;
+        Sink::write_err(&fmt, value)
     }
 }
 
-fn get_renku_url(opts: &CommonOpts) -> String {
+fn get_renku_url(opts: &CommonOpts) -> Result<RenkuUrl, CmdError> {
     match &opts.renku_url {
         Some(u) => {
             log::debug!("Use renku url from arguments: {}", u);
-            u.clone()
+            Ok(u.clone())
         }
         None => match std::env::var("RENKU_CLI_RENKU_URL").ok() {
             Some(u) => {
                 log::debug!("Use renku url from env RENKU_CLI_RENKU_URL: {}", u);
-                u
+                RenkuUrl::parse(&u).map_err(|e| CmdError::ContextCreate {
+                    source: httpclient::Error::UrlParse { source: e },
+                })
             }
             None => {
                 log::debug!("Use renku url: https://renkulab.io");
-                RENKULAB_IO.to_string()
+                RenkuUrl::parse(RENKULAB_IO).map_err(|e| CmdError::ContextCreate {
+                    source: httpclient::Error::UrlParse { source: e },
+                })
             }
         },
     }

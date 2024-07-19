@@ -57,6 +57,7 @@ where
         .flatten()
 }
 
+//TODO look at tokio-stream crate, that provides wrappers for implementing Stream for tokio::ReadDir
 /// Visits all entries of the given paths recursively using tokios async read_dir.
 pub fn visit_all<I, P>(paths: I) -> impl Stream<Item = io::Result<PathBuf>> + Send + 'static
 where
