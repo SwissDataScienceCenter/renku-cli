@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use super::Context;
-use crate::httpclient::auth::UserCode;
+use crate::httpclient::auth::{Response, UserCode};
 use crate::httpclient::Error as HttpError;
 use crate::{cli::sink::Error as SinkError, data::simple_message::SimpleMessage};
 use clap::{Parser, ValueHint};
@@ -28,6 +28,10 @@ use snafu::{ResultExt, Snafu};
 /// When the token is received, it is stored in the application data
 /// folder of your system. Once it expires, the login process must be
 /// repeated.
+///
+/// The access token can also be manually given as an environment
+/// variable RENKU_CLI_ACCESS_TOKEN (then the login command is not
+/// required and its result will be ignored).
 #[derive(Parser, Debug, PartialEq)]
 pub struct Input {
     /// Do not poll for the access token, only print the user code information.
@@ -89,7 +93,7 @@ impl Input {
                 .await
                 .context(HttpClientSnafu)?;
 
-            dbg!(&resp);
+            print_success(ctx, &resp).await?;
         } else {
             let info = ctx
                 .client
@@ -101,7 +105,7 @@ impl Input {
 
             if steps == Steps::Complete {
                 ctx.write_result(&SimpleMessage {
-                    message: "The program will continue automatically…".into(),
+                    message: "Waiting for authorization response…".into(),
                 })
                 .await
                 .context(WriteResultSnafu)?;
@@ -111,9 +115,13 @@ impl Input {
                     .await
                     .context(HttpClientSnafu)?;
 
-                dbg!(&resp);
+                print_success(ctx, &resp).await?;
             }
         }
         Ok(())
     }
+}
+
+async fn print_success(ctx: &Context, resp: &Response) -> Result<(), Error> {
+    ctx.write_result(resp).await.context(WriteResultSnafu)
 }

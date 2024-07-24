@@ -45,7 +45,26 @@ async fn token_file_create() -> Result<PathBuf, Error> {
 pub async fn write_auth_token(resp: &Response) -> Result<(), Error> {
     let file = token_file_create().await?;
     let cnt = serde_json::to_vec(resp).context(ToJsonSnafu)?;
-    tokio::fs::write(&file, &cnt).await.context(WriteFileSnafu)
+    tokio::fs::write(&file, &cnt)
+        .await
+        .context(WriteFileSnafu)?;
+    set_read_only(&file)
+}
+
+#[cfg(unix)]
+fn set_read_only(file: &PathBuf) -> Result<(), Error> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mut perms = std::fs::metadata(&file)
+        .context(WriteFileSnafu)?
+        .permissions();
+    perms.set_mode(0o600);
+    std::fs::set_permissions(&file, perms).context(WriteFileSnafu)
+}
+
+#[cfg(not(unix))]
+fn set_read_only(file: &PathBuf) -> Result<(), Error> {
+    Ok(())
 }
 
 #[allow(dead_code)]

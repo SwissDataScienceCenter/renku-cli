@@ -13,6 +13,7 @@ use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 
 const RENKULAB_IO: &str = "https://renkulab.io";
+const ACCESS_TOKEN_ENV: &str = "RENKU_CLI_ACCESS_TOKEN";
 
 pub struct Context {
     pub opts: CommonOpts,
@@ -22,8 +23,9 @@ pub struct Context {
 impl Context {
     pub fn new(opts: &CommonOpts) -> Result<Context, CmdError> {
         let base_url = get_renku_url(opts)?;
-        let client =
-            Client::new(base_url, proxy_settings(opts), None, false).context(ContextCreateSnafu)?;
+        let at = std::env::var(ACCESS_TOKEN_ENV).ok();
+        let client = Client::new(base_url, proxy_settings(opts), None, false, at)
+            .context(ContextCreateSnafu)?;
         Ok(Context {
             opts: opts.clone(),
             client,

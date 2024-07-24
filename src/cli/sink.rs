@@ -1,6 +1,6 @@
 use crate::cli::opts::Format;
 use crate::data::simple_message::SimpleMessage;
-use crate::httpclient::auth::UserCode;
+use crate::httpclient::auth::{Response, UserCode};
 use crate::httpclient::data::*;
 use crate::util::file::PathEntry;
 use serde::Serialize;
@@ -60,3 +60,4 @@ impl Sink for SimpleMessage {}
 impl Sink for BuildInfo {}
 impl Sink for PathEntry {}
 impl Sink for UserCode {}
+impl Sink for Response {}

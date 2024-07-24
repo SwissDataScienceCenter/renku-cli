@@ -1,10 +1,8 @@
-use std::{
-    fmt::Display,
-    time::{Duration, SystemTime},
-};
+use std::fmt::Display;
 
 use crate::data::renku_url::RenkuUrl;
 use ::reqwest as rqw;
+use iso8601_timestamp::{Duration, Timestamp};
 use openidconnect::core::*;
 use openidconnect::reqwest::async_http_client;
 use openidconnect::*;
@@ -53,9 +51,27 @@ pub fn access_token(r: &TokenResponse) -> String {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Response {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub created_at: Option<Duration>,
+    pub created_at: Timestamp,
     pub response: TokenResponse,
+}
+impl Response {
+    pub fn expires_at(&self) -> Option<Timestamp> {
+        match &self.response.expires_in() {
+            Some(d) => self
+                .created_at
+                .checked_add(Duration::nanoseconds(d.as_nanos() as i64)),
+            None => None,
+        }
+    }
+}
+
+impl Display for Response {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.expires_at() {
+            Some(end) => write!(f, "Login successful. Valid until {}.", end.format()),
+            None => write!(f, "Login successful."),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -147,11 +163,8 @@ pub async fn poll_tokens(code: UserCode) -> Result<Response, AuthError> {
             .set_device_authorization_uri(device_url)
             .set_auth_type(AuthType::RequestBody);
 
-    let duration = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .ok();
     Ok(Response {
-        created_at: duration,
+        created_at: Timestamp::now_utc(),
         response: client
             .exchange_device_access_token(&code.device_auth_resp)
             .request_async(async_http_client, tokio::time::sleep, None)

@@ -34,6 +34,7 @@ use crate::data::renku_url::RenkuUrl;
 use self::data::*;
 use auth::Response;
 use auth::UserCode;
+use openidconnect::OAuth2TokenResponse;
 use reqwest::Certificate;
 use reqwest::ClientBuilder;
 use reqwest::IntoUrl;
@@ -82,7 +83,7 @@ pub enum Error {
 pub struct Client {
     client: reqwest::Client,
     settings: Settings,
-    auth_data: Option<Response>,
+    access_token: Option<String>,
 }
 
 #[derive(Debug)]
@@ -99,6 +100,7 @@ impl Client {
         proxy: proxy::ProxySetting,
         trusted_certificate: Option<PathBuf>,
         accept_invalid_certs: bool,
+        access_token: Option<String>,
     ) -> Result<Client, Error> {
         log::debug!("Create renku client for: {}", renku_url);
         let mut client_builder = ClientBuilder::new().user_agent(USER_AGENT);
@@ -127,11 +129,12 @@ impl Client {
             }
         }
 
-        let auth_data = cache::read_auth_token()?;
+        let auth_data = access_token
+            .or(cache::read_auth_token()?.map(|r| r.response.access_token().secret().clone()));
         let client = client_builder.build().context(ClientCreateSnafu)?;
         Ok(Client {
             client,
-            auth_data,
+            access_token: auth_data,
             settings: Settings {
                 proxy,
                 trusted_certificate,
@@ -154,8 +157,8 @@ impl Client {
     }
 
     fn set_bearer_token(&self, b: RequestBuilder) -> RequestBuilder {
-        match &self.auth_data {
-            Some(d) => b.bearer_auth(auth::access_token(&d.response)),
+        match &self.access_token {
+            Some(token) => b.bearer_auth(&token),
             None => b,
         }
     }
@@ -309,6 +312,7 @@ impl Client {
             self.settings.proxy.clone(),
             self.settings.trusted_certificate.clone(),
             self.settings.accept_invalid_certs,
+            self.access_token.clone(),
         )?;
 
         let details = client
