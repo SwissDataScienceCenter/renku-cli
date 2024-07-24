@@ -15,3 +15,12 @@ license-files = []
 
 [advisories]
 version = 2
+ignore = [
+  # https://rustsec.org/advisories/RUSTSEC-2023-0071 and
+  # https://github.com/ramosbugs/openidconnect-rs/issues/140
+  "RUSTSEC-2023-0071",
+
+  # https://rustsec.org/advisories/RUSTSEC-2024-0320
+  # used by comrak
+  "RUSTSEC-2024-0320"
+]

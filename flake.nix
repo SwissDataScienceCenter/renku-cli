@@ -130,6 +130,7 @@
         # Audit dependencies
         my-crate-audit = craneLib.cargoAudit {
           inherit src advisory-db;
+          cargoAuditExtraArgs = "--ignore RUSTSEC-2023-0071";
         };
 
         # Audit licenses
