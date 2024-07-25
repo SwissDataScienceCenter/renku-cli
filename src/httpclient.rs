@@ -158,7 +158,7 @@ impl Client {
 
     fn set_bearer_token(&self, b: RequestBuilder) -> RequestBuilder {
         match &self.access_token {
-            Some(token) => b.bearer_auth(&token),
+            Some(token) => b.bearer_auth(token),
             None => b,
         }
     }
