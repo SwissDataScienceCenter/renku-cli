@@ -61,6 +61,7 @@
             # Additional darwin specific inputs can be set here
             pkgs.libiconv
             pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.git
           ];
 
         # Additional environment variables can be set directly
