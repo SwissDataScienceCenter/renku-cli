@@ -15,7 +15,10 @@
       inputs.rust-analyzer-src.follows = "";
     };
 
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-utils = {
+      url = "github:numtide/flake-utils";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     advisory-db = {
       url = "github:rustsec/advisory-db";
@@ -56,12 +59,12 @@
             # Add additional build inputs here
             pkgs.openssl
             pkgs.installShellFiles
+            pkgs.git
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             # Additional darwin specific inputs can be set here
             pkgs.libiconv
             pkgs.darwin.apple_sdk.frameworks.Security
-            pkgs.git
           ];
 
         # Additional environment variables can be set directly
