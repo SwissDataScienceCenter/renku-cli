@@ -12,7 +12,8 @@
 //!    RenkuUrl::parse("https://renkulab.io").unwrap(),
 //!    httpclient::proxy::ProxySetting::System,
 //!    None,
-//!    false
+//!    false,
+//!    None,
 //! ).unwrap();
 //! async {
 //!   println!("{:?}", client.version(false).await);
