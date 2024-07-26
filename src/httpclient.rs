@@ -33,14 +33,9 @@ use crate::data::project_id::ProjectId;
 use crate::data::renku_url::RenkuUrl;
 
 use self::data::*;
-use auth::Response;
-use auth::UserCode;
+use auth::{Response, UserCode};
 use openidconnect::OAuth2TokenResponse;
-use reqwest::Certificate;
-use reqwest::ClientBuilder;
-use reqwest::IntoUrl;
-use reqwest::RequestBuilder;
-use reqwest::Url;
+use reqwest::{Certificate, ClientBuilder, IntoUrl, RequestBuilder, Url};
 use serde::de::DeserializeOwned;
 use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;

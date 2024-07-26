@@ -82,7 +82,7 @@ impl Input {
 impl Input {
     pub async fn exec(&self, ctx: &Context) -> Result<(), Error> {
         let steps = self.get_steps();
-        if let Steps::Continue(file) = &self.get_steps() {
+        if let Steps::Continue(file) = &steps {
             let buf = tokio::fs::read(file)
                 .await
                 .context(FileReadSnafu { file })?;

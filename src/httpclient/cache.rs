@@ -63,7 +63,7 @@ fn set_read_only(file: &PathBuf) -> Result<(), Error> {
 }
 
 #[cfg(not(unix))]
-fn set_read_only(file: &PathBuf) -> Result<(), Error> {
+fn set_read_only(_file: &PathBuf) -> Result<(), Error> {
     Ok(())
 }
 

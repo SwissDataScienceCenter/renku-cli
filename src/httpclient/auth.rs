@@ -85,7 +85,7 @@ impl Display for UserCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Please visit this url and authorize this application:\n{}\nUser-Code: {}",
+            "Please visit this url and authorize this application:\n{}\nIf the website requests to enter a 'user code', use: {}",
             self.authorization_url, self.user_code
         )
     }
