@@ -17,7 +17,6 @@
 
     flake-utils = {
       url = "github:numtide/flake-utils";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     advisory-db = {
@@ -65,6 +64,7 @@
             # Additional darwin specific inputs can be set here
             pkgs.libiconv
             pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           ];
 
         # Additional environment variables can be set directly
