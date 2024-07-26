@@ -11,12 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check-linux-macos:
-    name: "check linux and macos"
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest]
+  check-linux:
+    name: "check linux"
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,7 +33,31 @@ jobs:
 
       - name: Build with nix and run checks
         run: |
-          nix flake check
+          nix flake check --print-build-logs
+
+  check-macos:
+    name: "check macos"
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install nix
+        uses: cachix/install-nix-action@V27
+        with:
+          extra_nix_config: access-tokens = github.com=${{ github.token }}
+
+      - name: Check nix formatting
+        run: nix fmt -- -c .
+
+      - name: Set up cachix
+        uses: cachix/cachix-action@v15
+        with:
+          name: nix-community
+
+      - name: Build with nix and run checks
+        run: |
+          nix flake check --print-build-logs
 
   check-win:
     name: "check windows"
@@ -82,7 +103,7 @@ jobs:
 
   ci:
     runs-on: ubuntu-latest
-    needs: [check-linux-macos, check-win, check-installer]
+    needs: [check-macos, check-linux, check-win, check-installer]
     steps:
       - name: Aggregate of lint, and all tests
         run: echo "ci passed"

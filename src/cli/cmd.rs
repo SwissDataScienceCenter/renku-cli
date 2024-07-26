@@ -1,3 +1,4 @@
+pub mod login;
 pub mod project;
 pub mod shell_completion;
 #[cfg(feature = "user-doc")]
@@ -12,6 +13,7 @@ use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 
 const RENKULAB_IO: &str = "https://renkulab.io";
+const ACCESS_TOKEN_ENV: &str = "RENKU_CLI_ACCESS_TOKEN";
 
 pub struct Context {
     pub opts: CommonOpts,
@@ -21,8 +23,9 @@ pub struct Context {
 impl Context {
     pub fn new(opts: &CommonOpts) -> Result<Context, CmdError> {
         let base_url = get_renku_url(opts)?;
-        let client =
-            Client::new(base_url, proxy_settings(opts), None, false).context(ContextCreateSnafu)?;
+        let at = std::env::var(ACCESS_TOKEN_ENV).ok();
+        let client = Client::new(base_url, proxy_settings(opts), None, false, at)
+            .context(ContextCreateSnafu)?;
         Ok(Context {
             opts: opts.clone(),
             client,
@@ -97,6 +100,9 @@ pub enum CmdError {
     #[snafu(display("Project - {}", source))]
     Project { source: project::Error },
 
+    #[snafu(display("Login - {}", source))]
+    Login { source: login::Error },
+
     #[cfg(feature = "user-doc")]
     #[snafu(display("UserDoc - {}", source))]
     UserDoc { source: userdoc::Error },
@@ -118,5 +124,11 @@ impl From<project::Error> for CmdError {
 impl From<userdoc::Error> for CmdError {
     fn from(source: userdoc::Error) -> Self {
         CmdError::UserDoc { source }
+    }
+}
+
+impl From<login::Error> for CmdError {
+    fn from(source: login::Error) -> Self {
+        CmdError::Login { source }
     }
 }

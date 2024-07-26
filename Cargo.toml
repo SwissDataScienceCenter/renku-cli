@@ -20,7 +20,7 @@ console = {version = "0.15.8"}
 env_logger = { version = "0.11.3" }
 log = { version = "0.4.22" }
 openssl = { version = "0.10.64", optional = true }
-reqwest = { version = "0.12.5", default-features = false, features = ["json", "blocking", "multipart"] }
+reqwest = { version = "0.12.5", default-features = false, features = ["json", "multipart"] }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = "1.0.118"
 snafu = { version = "0.8.4" }
@@ -29,13 +29,15 @@ futures = { version = "0.3" }
 regex = { version = "1.10.5" }
 iso8601-timestamp = { version = "0.2.17" }
 toml = { version = "0.8.15" }
-git2 = "0.19.0"
+git2 = { version = "0.19.0", default-features = false, features = [ "vendored-libgit2" ]}
 url = { version = "2.5.1" }
+openidconnect = { version = "3.5.0", default-features = false, features = [ "reqwest" ] }
+directories = { version = "5.0" }
 comrak = { version = "0.24.1", optional = true }
 
 [features]
 default = ["reqwest/default-tls"] # link against system library
-rustls = ["reqwest/rustls-tls"] # include rustls, ssl library written in rust
+rustls = ["reqwest/rustls-tls", "openidconnect/rustls-tls"] # include rustls, ssl library written in rust
 vendored-openssl = ["openssl/vendored"] # include compiled openssl library
 user-doc = [ "dep:comrak" ]
 

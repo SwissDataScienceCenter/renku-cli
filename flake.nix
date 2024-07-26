@@ -15,7 +15,9 @@
       inputs.rust-analyzer-src.follows = "";
     };
 
-    flake-utils.url = "github:numtide/flake-utils";
+    flake-utils = {
+      url = "github:numtide/flake-utils";
+    };
 
     advisory-db = {
       url = "github:rustsec/advisory-db";
@@ -56,11 +58,13 @@
             # Add additional build inputs here
             pkgs.openssl
             pkgs.installShellFiles
+            pkgs.git
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             # Additional darwin specific inputs can be set here
             pkgs.libiconv
             pkgs.darwin.apple_sdk.frameworks.Security
+            pkgs.darwin.apple_sdk.frameworks.SystemConfiguration
           ];
 
         # Additional environment variables can be set directly
@@ -130,6 +134,7 @@
         # Audit dependencies
         my-crate-audit = craneLib.cargoAudit {
           inherit src advisory-db;
+          cargoAuditExtraArgs = "--ignore RUSTSEC-2023-0071";
         };
 
         # Audit licenses

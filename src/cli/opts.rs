@@ -58,6 +58,9 @@ pub enum SubCommand {
     #[command()]
     Clone(project::clone::Input),
 
+    #[command()]
+    Login(login::Input),
+
     #[cfg(feature = "user-doc")]
     UserDoc(userdoc::Input),
 }
