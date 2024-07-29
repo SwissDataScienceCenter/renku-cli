@@ -33,7 +33,7 @@ git2 = { version = "0.19.0", default-features = false, features = [ "vendored-li
 url = { version = "2.5.1" }
 openidconnect = { version = "3.5.0", default-features = false, features = [ "reqwest" ] }
 directories = { version = "5.0" }
-comrak = { version = "0.24.1", optional = true }
+comrak = { version = "0.26.0", optional = true }
 
 [features]
 default = ["reqwest/default-tls"] # link against system library
