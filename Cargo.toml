@@ -15,7 +15,7 @@ build = "build.rs"
 
 [dependencies]
 clap = { version = "4.5.13", features = ["derive", "wrap_help"] }
-clap_complete = "4.5.6"
+clap_complete = "4.5.13"
 console = {version = "0.15.8"}
 env_logger = { version = "0.11.3" }
 log = { version = "0.4.22" }
