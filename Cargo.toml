@@ -17,7 +17,7 @@ build = "build.rs"
 clap = { version = "4.5.13", features = ["derive", "wrap_help"] }
 clap_complete = "4.5.13"
 console = {version = "0.15.8"}
-env_logger = { version = "0.11.3" }
+env_logger = { version = "0.11.5" }
 log = { version = "0.4.22" }
 openssl = { version = "0.10.64", optional = true }
 reqwest = { version = "0.12.5", default-features = false, features = ["json", "multipart"] }
