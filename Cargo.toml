@@ -42,7 +42,7 @@ vendored-openssl = ["openssl/vendored"] # include compiled openssl library
 user-doc = [ "dep:comrak" ]
 
 [dev-dependencies]
-assert_cmd = "2.0.14"
+assert_cmd = "2.0.16"
 predicates = "3.1.0"
 
 [build-dependencies]
