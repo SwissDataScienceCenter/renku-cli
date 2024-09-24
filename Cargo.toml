@@ -43,7 +43,7 @@ user-doc = [ "dep:comrak" ]
 
 [dev-dependencies]
 assert_cmd = "2.0.16"
-predicates = "3.1.0"
+predicates = "3.1.2"
 
 [build-dependencies]
 vergen = { version = "8.3.2", features = ["build", "git", "gitcl", "rustc", "cargo"] }
