@@ -20,7 +20,7 @@ console = {version = "0.15.8"}
 env_logger = { version = "0.11.5" }
 log = { version = "0.4.22" }
 openssl = { version = "0.10.64", optional = true }
-reqwest = { version = "0.12.7", default-features = false, features = ["json", "multipart"] }
+reqwest = { version = "0.12.8", default-features = false, features = ["json", "multipart"] }
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 snafu = { version = "0.8.5" }
