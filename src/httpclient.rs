@@ -287,10 +287,8 @@ impl Client {
             (?<uinamespace>/v2/projects/)(?<uins>[^/]+)/(?<uiname>.+) # /v2/projects/<namespace>/<slug> (ui)").unwrap();
         let captures = project_path_regex.captures(url.path()).unwrap();
         let path = if captures.name("uiproj").is_some() {
-            &format!(
-                "/api/data/projects/{}",
-                captures.name("uiid").unwrap().as_str()
-            )
+            let proj_id = captures.name("uiid").unwrap().as_str();
+            format!("/api/data/projects/{}", proj_id)
         } else {
             return Err(Error::ProjectUrlParse {
                 reason: format!("Url {} did not match project URL pattern", url),
