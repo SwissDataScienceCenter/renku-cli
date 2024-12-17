@@ -35,6 +35,7 @@ use crate::data::renku_url::RenkuUrl;
 use self::data::*;
 use auth::{Response, UserCode};
 use openidconnect::OAuth2TokenResponse;
+use regex::Regex;
 use reqwest::{Certificate, ClientBuilder, IntoUrl, RequestBuilder, Url};
 use serde::de::DeserializeOwned;
 use snafu::{ResultExt, Snafu};
@@ -65,6 +66,8 @@ pub enum Error {
     #[snafu(display("Error reading url: {}", source))]
     UrlParse { source: url::ParseError },
 
+    #[snafu(display("Error parsing url: {}", reason))]
+    ProjectUrlParse { reason: String },
     #[snafu(transparent)]
     Auth { source: auth::AuthError },
 
@@ -248,7 +251,7 @@ impl Client {
         debug: bool,
     ) -> Result<Option<ProjectDetails>, Error> {
         log::debug!("Get project by namespace/slug: {}/{}", namespace, slug);
-        let path = format!("/api/data/projects/{}/{}", namespace, slug);
+        let path = format!("/api/data/namespaces/{}/projects/{}", namespace, slug);
         let details = self.json_get_option::<ProjectDetails>(&path, debug).await?;
         Ok(details)
     }
@@ -274,27 +277,22 @@ impl Client {
         let url = url.into_url().context(HttpSnafu { url: urlstr })?;
         log::debug!("Get project by url: {}", &url);
         // there are different urls identifying the project
-        //   /api/data/projects/<id>
-        //   /api/data/projects/<namespace>/<slug>
         //   /v2/projects/<id> (ui)
         //   /v2/projects/<namespace>/<slug> (ui)
-        // the api is only the first two. Try to replace `v2` with `api/data`
         // note the ui urls are currently not stable
-
-        let path = match url.path_segments() {
-            Some(it) => {
-                let mut seen = false;
-                it.flat_map(|s| {
-                    if s == "v2" && !seen {
-                        seen = true;
-                        vec!["api", "data"]
-                    } else {
-                        vec![s]
-                    }
-                })
-                .fold(String::new(), |a, b| a + b + "/")
-            }
-            None => url.path().to_string(),
+        let project_path_regex = Regex::new(
+            r"(?x)
+            (?<uiproj>/v2/projects/)(?<uiid>[0-7][0-9A-HJKMNP-TV-Z]{25}) # /v2/projects/<id> (ui)
+            |
+            (?<uinamespace>/v2/projects/)(?<uins>[^/]+)/(?<uiname>.+) # /v2/projects/<namespace>/<slug> (ui)").unwrap();
+        let captures = project_path_regex.captures(url.path()).unwrap();
+        let path = if captures.name("uiproj").is_some() {
+            let proj_id = captures.name("uiid").unwrap().as_str();
+            format!("/api/data/projects/{}", proj_id)
+        } else {
+            return Err(Error::ProjectUrlParse {
+                reason: format!("Url {} did not match project URL pattern", url),
+            });
         };
 
         log::debug!("Transformed path {} to: {}", url.path(), &path);
