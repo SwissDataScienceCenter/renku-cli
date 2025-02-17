@@ -29,7 +29,7 @@ futures = { version = "0.3" }
 regex = { version = "1.11.0" }
 iso8601-timestamp = { version = "0.2.17" }
 toml = { version = "0.8.19" }
-git2 = { version = "0.19.0", default-features = false, features = [ "vendored-libgit2" ]}
+git2 = { version = "0.19.0", default-features = false, features = [ "vendored-libgit2", "https", "ssh" ]}
 url = { version = "2.5.1" }
 openidconnect = { version = "3.5.0", default-features = false, features = [ "reqwest" ] }
 directories = { version = "5.0" }

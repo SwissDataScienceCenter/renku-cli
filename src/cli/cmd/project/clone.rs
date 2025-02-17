@@ -145,7 +145,7 @@ async fn clone_repository(
     dir: Arc<PathBuf>,
 ) -> Result<(), Error> {
     let name = match repo_url.rsplit_once('/') {
-        Some((_, n)) => Ok(n),
+        Some((_, n)) => Ok(n.strip_suffix(".git").unwrap_or(n)),
         None => Err(Error::MissingProjectName {
             repo_url: repo_url.clone(),
         }),
@@ -158,6 +158,8 @@ async fn clone_repository(
         .await
         .context(WriteResultSnafu)?;
     } else {
+        log::debug!("Cloning: {}", repo_url);
+
         // TODO use the repository builder to access more options,
         // show clone progress and provide credentials
         let (repo, repo_url, local_path) = tokio::task::spawn_blocking(|| {
