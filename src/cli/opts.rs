@@ -63,6 +63,9 @@ pub enum SubCommand {
 
     #[cfg(feature = "user-doc")]
     UserDoc(userdoc::Input),
+
+    #[command()]
+    Dataset(dataset::Input),
 }
 
 /// This is the command line interface to the Renku platform. Main
