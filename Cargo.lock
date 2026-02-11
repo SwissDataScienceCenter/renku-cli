@@ -2365,9 +2365,11 @@ dependencies = [
  "serde_json",
  "snafu",
  "tokio",
+ "tokio-util",
  "toml",
  "url",
  "vergen",
+ "walkdir",
 ]
 
 [[package]]
