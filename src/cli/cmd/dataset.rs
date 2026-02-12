@@ -1,11 +1,9 @@
 pub mod deposit;
 pub mod zenodo;
 
-use std::env::args;
-
 use super::Context;
 use clap::Parser;
-use snafu::{ResultExt, Snafu};
+use snafu::Snafu;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -32,4 +30,12 @@ pub enum DatasetCommand {
 pub enum DepositCommand {
     #[command()]
     CopyFiles(deposit::CopyInput),
+}
+
+impl Input {
+    pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
+        match self.subcmd {
+            DatasetCommand::Deposit { cmd: _ } => Ok(print!("Hi")),
+        }
+    }
 }

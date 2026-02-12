@@ -1,10 +1,11 @@
 use super::zenodo;
 use super::Context;
-use crate::httpclient::Error as HttpError;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use snafu::{ResultExt, Snafu};
-use url::Url;
+use std::env::VarError;
+use std::path::PathBuf;
 
+#[derive(Debug, Clone, ValueEnum)]
 enum Provider {
     Zenodo,
 }
@@ -12,7 +13,10 @@ enum Provider {
 #[derive(Debug, Snafu)]
 pub enum Error {
     #[snafu(display("A dataset deposit error occured: {}", source))]
-    HttpClient { source: HttpError },
+    Zenodo { source: zenodo::Error },
+
+    #[snafu(display("Env variable error: {}", source))]
+    EnvVarMissing { source: VarError },
 }
 
 /// Copies the data from a location into a data deposit
@@ -32,12 +36,14 @@ pub struct CopyInput {
 }
 
 impl CopyInput {
-    pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
+    pub async fn exec(&self, _ctx: Context) -> Result<(), Error> {
         match self.provider {
             Provider::Zenodo => {
-                let token = std::env::var("ZENODO_API_KEY")?;
+                let token = std::env::var("ZENODO_API_KEY").context(EnvVarMissingSnafu)?;
                 let clnt = zenodo::ZenodoClient::new(token);
-                clnt.upload_files(self.deposit_id, self.source_dir).await?;
+                clnt.upload_files(&self.deposit_id, &self.source_dir)
+                    .await
+                    .context(ZenodoSnafu)
             }
         }
     }
