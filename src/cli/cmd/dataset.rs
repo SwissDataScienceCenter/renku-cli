@@ -33,9 +33,12 @@ pub enum DepositCommand {
 }
 
 impl Input {
-    pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
+    pub async fn exec(&self, _ctx: Context) -> Result<(), Error> {
         match self.subcmd {
-            DatasetCommand::Deposit { cmd: _ } => Ok(print!("Hi")),
+            DatasetCommand::Deposit { cmd: _ } => {
+                print!("Hi");
+                Ok(())
+            }
         }
     }
 }

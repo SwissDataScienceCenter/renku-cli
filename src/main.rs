@@ -30,7 +30,9 @@ async fn execute() -> Result<()> {
 
     let result = rnk::execute_cmd(opts).await;
     if remove_env {
-        env::remove_var(LOG_LEVEL);
+        unsafe {
+            env::remove_var(LOG_LEVEL);
+        }
     }
     result?;
     Ok(())
@@ -39,7 +41,9 @@ async fn execute() -> Result<()> {
 fn set_log_level(level: &str) -> bool {
     let current = env::var_os(LOG_LEVEL);
     if current.is_none() {
-        env::set_var(LOG_LEVEL, level);
+        unsafe {
+            env::set_var(LOG_LEVEL, level);
+        }
         true
     } else {
         false

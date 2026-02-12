@@ -10,6 +10,7 @@ use walkdir::WalkDir;
 
 use std::io;
 use std::sync::LazyLock;
+
 pub struct ZenodoClient {
     http_client: reqwest::Client,
     base_url: Url,
@@ -38,15 +39,15 @@ pub enum Error {
 impl ZenodoClient {
     pub fn new(token: String) -> ZenodoClient {
         let http_client = reqwest::Client::new();
-        return ZenodoClient {
+        ZenodoClient {
             http_client,
             base_url: BASE_URL.clone(),
             token,
-        };
+        }
     }
 
     fn make_url(&self, path: &str) -> Result<Url, Error> {
-        return self.base_url.join(path).context(UrlParseSnafu);
+        self.base_url.join(path).context(UrlParseSnafu)
     }
 
     pub async fn get_deposition<R: DeserializeOwned>(
@@ -57,11 +58,12 @@ impl ZenodoClient {
         let res = self
             .http_client
             .get(endpoint)
+            .bearer_auth(&self.token)
             .send()
             .await
             .context(ReqwestSnafu)?;
         // res.error_for_status().context(ReqwestSnafu)?;
-        return res.json::<R>().await.context(DeserializeRespSnafu);
+        res.json::<R>().await.context(DeserializeRespSnafu)
     }
 
     pub async fn upload_files(&self, deposition_id: &str, source_path: &Path) -> Result<(), Error> {
@@ -77,11 +79,11 @@ impl ZenodoClient {
         let res = self
             .http_client
             .get(endpoint)
+            .bearer_auth(&self.token)
             .send()
             .await
             .context(ReqwestSnafu)?;
-        // res.error_for_status().context(ReqwestSnafu)?;
-        return res.json::<R>().await.context(DeserializeRespSnafu);
+        res.json::<R>().await.context(DeserializeRespSnafu)
     }
 
     async fn upload_file<R: DeserializeOwned>(
@@ -114,11 +116,11 @@ impl ZenodoClient {
         let res = self
             .http_client
             .post(endpoint)
+            .bearer_auth(&self.token)
             .multipart(form)
             .send()
             .await
             .context(ReqwestSnafu)?;
-        // res.error_for_status().context(ReqwestSnafu)?;
-        return res.json::<R>().await.context(DeserializeRespSnafu);
+        res.json::<R>().await.context(DeserializeRespSnafu)
     }
 }

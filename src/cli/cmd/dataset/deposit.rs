@@ -6,7 +6,7 @@ use std::env::VarError;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, ValueEnum)]
-enum Provider {
+pub enum Provider {
     Zenodo,
 }
 
