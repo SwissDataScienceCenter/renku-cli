@@ -30,6 +30,8 @@ snafu = { version = "0.8.5" }
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec"] }
 walkdir = "2"
+tabled = "0.20.0"
+chrono = "0.4.43"
 futures = { version = "0.3" }
 regex = { version = "1.12.3" }
 iso8601-timestamp = { version = "0.2.17" }
@@ -56,6 +58,7 @@ self_update = { version = "0.43.1", features = [
   "archive-zip",
   "compression-flate2",
 ] }
+md5 = "0.8.0"
 
 [features]
 default = ["reqwest/default-tls"] # link against system library
