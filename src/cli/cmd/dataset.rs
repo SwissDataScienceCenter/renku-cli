@@ -1,9 +1,15 @@
 pub mod deposit;
 pub mod zenodo;
+mod zenodo_api;
 
-use super::Context;
-use clap::Parser;
-use snafu::Snafu;
+use super::Context as ParentContext;
+use clap::{Parser, ValueEnum};
+use snafu::{ResultExt, Snafu};
+
+#[derive(Debug, Clone, ValueEnum)]
+pub enum Provider {
+    Zenodo,
+}
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -21,6 +27,8 @@ pub struct Input {
 #[derive(Parser, Debug)]
 pub enum DatasetCommand {
     Deposit {
+        #[arg(long, default_value = "zenodo")]
+        provider: Provider,
         #[command(subcommand)]
         cmd: DepositCommand,
     },
@@ -28,17 +36,45 @@ pub enum DatasetCommand {
 
 #[derive(Parser, Debug)]
 pub enum DepositCommand {
-    #[command()]
+    #[command(name = "cp")]
     CopyFiles(deposit::CopyInput),
+    #[command(name = "ls")]
+    ListDeposits(deposit::ListInput),
+    #[command(name = "lsf")]
+    ListFiles(deposit::ListFiles),
+}
+
+pub struct Context {
+    pub parent: ParentContext,
+    pub provider: Provider,
+}
+
+impl Context {
+    pub fn new(ctx: ParentContext, provider: Provider) -> Context {
+        Context {
+            parent: ctx,
+            provider,
+        }
+    }
 }
 
 impl Input {
-    pub async fn exec(&self, _ctx: Context) -> Result<(), Error> {
-        match self.subcmd {
-            DatasetCommand::Deposit { cmd: _ } => {
-                print!("Hi");
-                Ok(())
-            }
+    pub async fn exec(&self, ctx: ParentContext) -> Result<(), Error> {
+        match &self.subcmd {
+            DatasetCommand::Deposit { provider, cmd } => match cmd {
+                DepositCommand::CopyFiles(input) => input
+                    .exec(Context::new(ctx, provider.clone()))
+                    .await
+                    .context(DepositSnafu),
+                DepositCommand::ListDeposits(input) => input
+                    .exec(Context::new(ctx, provider.clone()))
+                    .await
+                    .context(DepositSnafu),
+                DepositCommand::ListFiles(input) => input
+                    .exec(Context::new(ctx, provider.clone()))
+                    .await
+                    .context(DepositSnafu),
+            },
         }
     }
 }
