@@ -36,9 +36,9 @@ directories = { version = "5.0" }
 comrak = { version = "0.28.0", optional = true }
 
 [features]
-default = ["reqwest/default-tls", "openidconnect/native-tls"] # link against system library
+default = ["reqwest/default-tls"] # link against system library
 rustls = ["reqwest/rustls-tls", "openidconnect/rustls-tls"] # include rustls, ssl library written in rust
-vendored-openssl = ["git2/vendored-openssl", "reqwest/native-tls-vendored"] # include compiled openssl library
+vendored-openssl = ["openssl/vendored"] # include compiled openssl library
 user-doc = [ "dep:comrak" ]
 
 [dev-dependencies]
