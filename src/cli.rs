@@ -29,6 +29,8 @@ pub async fn execute_cmd(opts: MainOpts) -> Result<(), CmdError> {
 
         #[cfg(feature = "user-doc")]
         SubCommand::UserDoc(input) => input.exec(ctx).await?,
+
+        SubCommand::Dataset(input) => input.exec(ctx).await?,
     };
     Ok(())
 }

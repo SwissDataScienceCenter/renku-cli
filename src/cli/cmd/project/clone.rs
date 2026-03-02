@@ -114,7 +114,7 @@ impl Input {
     }
 }
 
-async fn clone_project<'a>(
+async fn clone_project(
     ctx: Context,
     project: &ProjectDetails,
     target: PathBuf,

@@ -6,8 +6,8 @@ version = "0.1.0-nightly"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/SwissDatascienceCenter/renku-cli"
-keywords = [ "renku", "cli" ]
-categories = [ "command-line-utilities" ]
+keywords = ["renku", "cli"]
+categories = ["command-line-utilities"]
 build = "build.rs"
 
 # See more keys and their definitions at
@@ -16,28 +16,47 @@ build = "build.rs"
 [dependencies]
 clap = { version = "4.5.13", features = ["derive", "wrap_help"] }
 clap_complete = "4.5.13"
-console = {version = "0.15.8"}
+console = { version = "0.15.8" }
 env_logger = { version = "0.11.5" }
 log = { version = "0.4.22" }
 openssl = { version = "0.10.64", optional = true }
-reqwest = { version = "0.12.7", default-features = false, features = ["json", "multipart"] }
+reqwest = { version = "0.12.7", default-features = false, features = [
+  "json",
+  "multipart",
+  "stream",
+] }
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 snafu = { version = "0.8.5" }
 tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+walkdir = "2"
+tabled = "0.20.0"
+chrono = "0.4.43"
 futures = { version = "0.3" }
 regex = { version = "1.11.0" }
 iso8601-timestamp = { version = "0.2.17" }
 toml = { version = "0.8.19" }
-git2 = { version = "0.19.0", default-features = false, features = [ "vendored-libgit2", "https", "ssh" ]}
+git2 = { version = "0.19.0", default-features = false, features = [
+  "vendored-libgit2",
+  "https",
+  "ssh",
+] }
 url = { version = "2.5.1" }
-openidconnect = { version = "3.5.0", default-features = false, features = [ "reqwest" ] }
+mime_guess = "2.0"
+openidconnect = { version = "3.5.0", default-features = false, features = [
+  "reqwest",
+] }
 directories = { version = "5.0" }
 comrak = { version = "0.28.0", optional = true }
+md5 = "0.8.0"
 
 [features]
 default = ["reqwest/default-tls"] # link against system library
-rustls = ["reqwest/rustls-tls", "openidconnect/rustls-tls"] # include rustls, ssl library written in rust
+rustls = [
+  "reqwest/rustls-tls",
+  "openidconnect/rustls-tls",
+] # include rustls, ssl library written in rust
 vendored-openssl = ["openssl/vendored"] # include compiled openssl library
 vendored-zlib = ["git2/zlib-ng-compat"] # without this feature wherever the cli is installed needs to have zlib.so
 user-doc = [ "dep:comrak" ]
@@ -47,4 +66,10 @@ assert_cmd = "2.0.16"
 predicates = "3.1.2"
 
 [build-dependencies]
-vergen = { version = "8.3.2", features = ["build", "git", "gitcl", "rustc", "cargo"] }
+vergen = { version = "8.3.2", features = [
+  "build",
+  "git",
+  "gitcl",
+  "rustc",
+  "cargo",
+] }

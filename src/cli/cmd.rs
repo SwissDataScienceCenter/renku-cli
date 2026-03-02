@@ -1,3 +1,4 @@
+pub mod dataset;
 pub mod login;
 pub mod project;
 pub mod shell_completion;
@@ -106,6 +107,9 @@ pub enum CmdError {
     #[cfg(feature = "user-doc")]
     #[snafu(display("UserDoc - {}", source))]
     UserDoc { source: userdoc::Error },
+
+    #[snafu(display("Dataset - {}", source))]
+    Dataset { source: dataset::Error },
 }
 
 impl From<version::Error> for CmdError {
@@ -130,5 +134,11 @@ impl From<userdoc::Error> for CmdError {
 impl From<login::Error> for CmdError {
     fn from(source: login::Error) -> Self {
         CmdError::Login { source }
+    }
+}
+
+impl From<dataset::Error> for CmdError {
+    fn from(source: dataset::Error) -> Self {
+        CmdError::Dataset { source }
     }
 }

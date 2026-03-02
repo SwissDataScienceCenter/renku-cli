@@ -44,6 +44,7 @@ use std::path::PathBuf;
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
 
 #[derive(Debug, Snafu)]
+#[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("An error was received from {}: {}", url, source))]
     Http { source: reqwest::Error, url: String },
