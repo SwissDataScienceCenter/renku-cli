@@ -31,7 +31,10 @@ iso8601-timestamp = { version = "0.2.17" }
 toml = { version = "0.8.19" }
 git2 = { version = "0.19.0", default-features = false, features = [ "vendored-libgit2", "https", "ssh" ]}
 url = { version = "2.5.1" }
-openidconnect = { version = "3.5.0", default-features = false, features = [ "reqwest" ] }
+openidconnect = { version = "3.5.0", default-features = false, features = [
+  "reqwest",
+  "rustls-tls",
+] }
 directories = { version = "5.0" }
 comrak = { version = "0.28.0", optional = true }
 
