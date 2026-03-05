@@ -1,26 +1,30 @@
 use assert_cmd::cargo::CargoError;
 use assert_cmd::prelude::*;
+use snafu::Snafu;
 use std::{io, process::Command};
 
-#[derive(Debug)]
+#[derive(Debug, Snafu)]
 pub enum Error {
-    Cargo(CargoError),
-    IO(io::Error),
-    Json(serde_json::Error),
+    #[snafu(display("Cargo Error: {}", source))]
+    Cargo { source: CargoError },
+    #[snafu(display("IO Error: {}", source))]
+    IO { source: io::Error },
+    #[snafu(display("JSON Error: {}", source))]
+    Json { source: serde_json::Error },
 }
 impl std::convert::From<CargoError> for Error {
     fn from(e: CargoError) -> Self {
-        Error::Cargo(e)
+        Error::Cargo { source: e }
     }
 }
 impl std::convert::From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
-        Error::IO(e)
+        Error::IO { source: e }
     }
 }
 impl std::convert::From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
-        Error::Json(e)
+        Error::Json { source: e }
     }
 }
 

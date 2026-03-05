@@ -4,8 +4,8 @@ allow = [
   "Apache-2.0",
   "0BSD",
   "Unicode-3.0",
-  "ISC",
   "BSD-3-Clause",
+  "MPL-2.0"
 ]
 
 [[licenses.clarify]]
@@ -20,7 +20,6 @@ ignore = [
   # https://github.com/ramosbugs/openidconnect-rs/issues/140
   "RUSTSEC-2023-0071",
 
-  # https://rustsec.org/advisories/RUSTSEC-2024-0320
-  # used by comrak
-  "RUSTSEC-2024-0320"
+  # https://rustsec.org/advisories/RUSTSEC-2023-0071
+  "RUSTSEC-2023-0071"
 ]
