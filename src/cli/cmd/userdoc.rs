@@ -75,7 +75,7 @@ enum OutputOption<'a> {
     Stdout,
 }
 impl Input {
-    fn get_output(&self) -> OutputOption {
+    fn get_output(&self) -> OutputOption<'_> {
         if let Some(f) = &self.output_file {
             OutputOption::OutFile(f.as_path())
         } else if let Some(f) = &self.output_dir {

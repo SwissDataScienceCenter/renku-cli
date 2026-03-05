@@ -19,14 +19,14 @@ clap_complete = "4.5.13"
 console = {version = "0.15.8"}
 env_logger = { version = "0.11.5" }
 log = { version = "0.4.22" }
-openssl = { version = "0.10.64", optional = true }
-reqwest = { version = "0.12.7", default-features = false, features = ["json", "multipart"] }
+openssl = { version = "0.10.75", optional = true }
+reqwest = { version = "0.12.28", default-features = false, features = ["json", "multipart"] }
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 snafu = { version = "0.8.5" }
 tokio = { version = "1", features = ["full"] }
 futures = { version = "0.3" }
-regex = { version = "1.11.0" }
+regex = { version = "1.12.3" }
 iso8601-timestamp = { version = "0.2.17" }
 toml = { version = "0.8.19" }
 git2 = { version = "0.19.0", default-features = false, features = [ "vendored-libgit2", "https", "ssh" ]}

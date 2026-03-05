@@ -69,7 +69,7 @@ fn read_to_string() {
     let id2 = ProjectId::Id("pr-id-42".into());
     let id3 = ProjectId::FullUrl(RenkuUrl::parse("http://localhost/project/1").unwrap());
 
-    for id in vec![id1, id2, id3] {
+    for id in [id1, id2, id3] {
         let id_str = format!("{}", id);
         let id_parsed = ProjectId::parse(&id_str).unwrap();
         assert_eq!(id, id_parsed);

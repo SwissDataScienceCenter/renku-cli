@@ -13,12 +13,12 @@ use snafu::{ResultExt, Snafu};
 /// The login consists of two parts:
 ///
 /// 1. Renku is queried to return a temporary URL that can be used to
-/// authenticate and authorize this application. The url must be
-/// opened with some device and the user code must be entered (if
-/// necessary).
+///    authenticate and authorize this application. The url must be
+///    opened with some device and the user code must be entered (if
+///    necessary).
 ///
 /// 2. Once the first step is complete, the cli can obtain an access
-/// token and does so by periodically polling the renku platform.
+///    token and does so by periodically polling the renku platform.
 ///
 /// The login command can do these two steps separately. This requires
 /// to run with `--user-code-only` to omit the second step and store
@@ -68,7 +68,7 @@ enum Steps<'a> {
     Complete,
 }
 impl Input {
-    fn get_steps(&self) -> Steps {
+    fn get_steps(&self) -> Steps<'_> {
         if let Some(p) = &self.continue_from {
             Steps::Continue(p)
         } else if self.user_code_only {
