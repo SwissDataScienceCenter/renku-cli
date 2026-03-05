@@ -56,7 +56,7 @@ pub struct Versions<'a> {
     pub renku_url: &'a str,
 }
 impl Versions<'_> {
-    pub fn create(server: VersionInfo, renku_url: &str) -> Versions {
+    pub fn create(server: VersionInfo, renku_url: &str) -> Versions<'_> {
         Versions {
             client: BuildInfo::default(),
             server,
