@@ -1,6 +1,5 @@
 pub mod login;
 pub mod project;
-pub mod shell_completion;
 #[cfg(feature = "user-doc")]
 pub mod userdoc;
 pub mod version;

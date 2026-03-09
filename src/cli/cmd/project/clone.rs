@@ -8,7 +8,7 @@ use crate::data::simple_message::SimpleMessage;
 use crate::httpclient::Error as HttpError;
 use std::sync::Arc;
 
-use clap::Parser;
+use clap::{Parser, ValueHint};
 use git2::{Error as GitError, Repository};
 use snafu::{ResultExt, Snafu};
 use std::path::{Path, PathBuf};
@@ -24,12 +24,12 @@ pub struct Input {
     /// namespace/slug identifier or the complete url. If a complete
     /// url is given, it will override any renku-url that might have
     /// been given otherwise.
-    #[arg()]
+    #[arg(value_hint=ValueHint::Other)]
     pub project_ref: ProjectId,
 
     /// Optional target directory to create the project in. By default
     /// the current working directory is used.
-    #[arg()]
+    #[arg(value_hint=ValueHint::DirPath)]
     pub target_dir: Option<PathBuf>,
 }
 

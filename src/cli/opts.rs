@@ -50,9 +50,6 @@ pub enum SubCommand {
     Version(version::Input),
 
     #[command()]
-    ShellCompletion(shell_completion::Input),
-
-    #[command()]
     Project(project::Input),
 
     /// Clone a project. (Shortcut for 'project clone')

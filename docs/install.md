@@ -123,18 +123,22 @@ For convenience, the cli tool can generate completion commands for
 several shells. You can use it for inclusion in your `.bashrc` or
 similar setups.
 
-For example:
+These have to be "sourced" into into your current shell:
 
-``` bash rnk:silent
-rnk shell-completion --shell bash
+```bash
+# Bash
+echo "source <(COMPLETE=bash rnk)" >> ~/.bashrc
+
+# Fish
+echo "COMPLETE=fish rnk | source" >> ~/.config/fish/config.fish
+
+# Zsh
+echo "source <(COMPLETE=zsh rnk)" >> ~/.zshrc
+
+# Powershell
+echo '$env:COMPLETE = "powershell"; rnk | Out-String | Invoke-Expression; Remove-Item Env:\COMPLETE' >> $PROFILE
 ```
 
-will generate the completions for bash. These have to be "sourced"
-into into your current shell:
-
-``` bash
-eval "$(rnk shell-completion --shell bash)"
-```
 
 Add this line to your `.bashrc` to have these completions available
 when you enter bash.
