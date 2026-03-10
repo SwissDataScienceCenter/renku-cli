@@ -70,14 +70,15 @@ impl RenkuProjectConfig {
     }
 
     pub fn write(&self, file: &Path) -> Result<(), ProjectConfigError> {
-        if !file.exists() {
-            if let Some(dir) = file.parent() {
-                std::fs::create_dir_all(dir).map_err(|e| ProjectConfigError::WriteFile {
-                    source: e,
-                    path: file.to_path_buf(),
-                })?;
-            }
+        if !file.exists()
+            && let Some(dir) = file.parent()
+        {
+            std::fs::create_dir_all(dir).map_err(|e| ProjectConfigError::WriteFile {
+                source: e,
+                path: file.to_path_buf(),
+            })?;
         }
+
         let cnt = toml::to_string(self).map_err(|e| ProjectConfigError::WriteToml {
             source: e,
             path: file.to_path_buf(),

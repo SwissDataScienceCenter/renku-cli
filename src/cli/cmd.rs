@@ -8,7 +8,7 @@ pub mod version;
 use super::sink::{Error as SinkError, Sink};
 use crate::cli::opts::{CommonOpts, ProxySetting};
 use crate::data::renku_url::RenkuUrl;
-use crate::httpclient::{self, proxy, Client};
+use crate::httpclient::{self, Client, proxy};
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
 

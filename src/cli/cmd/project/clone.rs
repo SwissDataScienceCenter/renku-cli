@@ -67,7 +67,10 @@ impl Input {
     pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
         let opt_details = ctx
             .client
-            .get_project(&self.project_ref, ctx.opts.verbose > 1)
+            .get_project(
+                &self.project_ref,
+                ctx.opts.verbosity.log_level().unwrap_or(log::Level::Warn) > log::Level::Info,
+            )
             .await
             .context(HttpClientSnafu)?;
         if let Some(details) = opt_details {
@@ -169,7 +172,7 @@ async fn clone_repository(
         .await
         .context(TaskJoinSnafu)?;
         let git_repo = repo?;
-        if ctx.opts.verbose > 1 {
+        if ctx.opts.verbosity.log_level().unwrap_or(log::Level::Warn) > log::Level::Info {
             let head = git_repo
                 .head()
                 .ok()

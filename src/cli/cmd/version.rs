@@ -1,9 +1,9 @@
 use super::Context;
+use crate::cli::BuildInfo;
 use crate::cli::sink::Error as SinkError;
 use crate::cli::sink::Sink;
-use crate::cli::BuildInfo;
-use crate::httpclient::data::VersionInfo;
 use crate::httpclient::Error as HttpError;
+use crate::httpclient::data::VersionInfo;
 use clap::Parser;
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
@@ -38,7 +38,9 @@ impl Input {
         } else {
             let result = ctx
                 .client
-                .version(ctx.opts.verbose > 1)
+                .version(
+                    ctx.opts.verbosity.log_level().unwrap_or(log::Level::Warn) > log::Level::Info,
+                )
                 .await
                 .context(HttpClientSnafu)?;
             let urlstr = ctx.renku_url().as_str();
