@@ -1,5 +1,5 @@
 use futures::TryStreamExt;
-use futures::{stream, Stream, StreamExt};
+use futures::{Stream, StreamExt, stream};
 use serde::Serialize;
 use std::fmt;
 use std::io;
