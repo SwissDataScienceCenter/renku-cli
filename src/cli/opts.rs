@@ -1,7 +1,8 @@
 use crate::data::renku_url::RenkuUrl;
 
 use super::cmd::*;
-use clap::{ArgAction, Parser, ValueEnum, ValueHint};
+use clap::{Parser, ValueEnum, ValueHint};
+use clap_verbosity_flag::{Verbosity, WarnLevel};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -12,8 +13,8 @@ use std::str::FromStr;
 pub struct CommonOpts {
     /// Be more verbose when logging. Verbosity increases with each
     /// occurence of that option.
-    #[arg(short, long, action = ArgAction::Count)]
-    pub verbose: u8,
+    #[command(flatten)]
+    pub verbosity: Verbosity<WarnLevel>,
 
     /// How to format the output. The default is human readable which
     /// may choose to not show every detail for better readability.

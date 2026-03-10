@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use super::Context;
-use crate::httpclient::auth::{Response, UserCode};
 use crate::httpclient::Error as HttpError;
+use crate::httpclient::auth::{Response, UserCode};
 use crate::{cli::sink::Error as SinkError, data::simple_message::SimpleMessage};
 use clap::{Parser, ValueHint};
 

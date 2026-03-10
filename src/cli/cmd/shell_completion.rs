@@ -1,5 +1,5 @@
 use clap::{Command, Parser, ValueEnum};
-use clap_complete::{generate, Generator, Shell};
+use clap_complete::{Generator, Shell, generate};
 
 /// Generates completions for some shells.
 ///
@@ -37,6 +37,6 @@ impl Input {
     }
 }
 
-fn generate_completions<G: Generator>(gen: G, binary: &str, app: &mut Command) {
-    generate(gen, app, binary, &mut std::io::stdout());
+fn generate_completions<G: Generator>(generator: G, binary: &str, app: &mut Command) {
+    generate(generator, app, binary, &mut std::io::stdout());
 }
