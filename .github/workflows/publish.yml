@@ -2,7 +2,7 @@ name: Publish
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
     branches:
       - main
 
@@ -17,31 +17,31 @@ jobs:
       fail-fast: true
       matrix:
         build:
-        - aarch64
-        - aarch64-musl
-        - amd64-musl
-        - amd64
+          - aarch64
+          - aarch64-musl
+          - amd64-musl
+          - amd64
         include:
-        - build: aarch64
-          os: ubuntu-latest
-          target: aarch64-unknown-linux-gnu
-          use-cross: true
-          features: "--no-default-features --features rustls"
-        - build: aarch64-musl
-          os: ubuntu-latest
-          target: aarch64-unknown-linux-musl
-          use-cross: true
-          features: "--no-default-features --features rustls"
-        - build: amd64
-          os: ubuntu-latest
-          target: x86_64-unknown-linux-gnu
-          use-cross: false
-          features: ""
-        - build: amd64-musl
-          os: ubuntu-latest
-          target: x86_64-unknown-linux-musl
-          use-cross: true
-          features: "--no-default-features --features rustls"
+          - build: aarch64
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            use-cross: true
+            features: "--no-default-features --features rustls"
+          - build: aarch64-musl
+            os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            use-cross: true
+            features: "--no-default-features --features rustls"
+          - build: amd64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            use-cross: false
+            features: ""
+          - build: amd64-musl
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            use-cross: true
+            features: "--no-default-features --features rustls"
     steps:
       - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
         with:
@@ -96,30 +96,18 @@ jobs:
           command: build
           args: ${{ matrix.features }} --release --target=${{ matrix.target }}
 
-      - name: Strip debug information from executable
-        id: strip
+      - name: set bin path
+        id: bin-path
         shell: bash
         run: |
-          # Figure out what strip tool to use if any
-          STRIP="strip"
-          case ${{ matrix.target }} in
-            arm-unknown-linux-gnueabihf) STRIP="arm-linux-gnueabihf-strip" ;;
-            aarch64-unknown-linux-gnu) STRIP="aarch64-linux-gnu-strip" ;;
-            aarch64-unknown-linux-musl) STRIP="aarch64-linux-gnu-strip" ;;
-            *-pc-windows-msvc) STRIP="" ;;
-          esac;
           # Setup paths
-          BIN_DIR="_cicd/stripped-release-bin/"
+          BIN_DIR="_cicd/release-bin/"
           mkdir -p "${BIN_DIR}"
           BIN_NAME="${{ env.PROJECT_NAME }}"
           BIN_PATH="${BIN_DIR}/${BIN_NAME}_${{ matrix.build }}-${{ env.VERSION_SUFFIX }}"
           # Copy the release build binary to the result location
           cp "target/${{ matrix.target }}/release/${BIN_NAME}" "${BIN_PATH}"
-          # Also strip if possible
-          if [ -n "${STRIP}" ]; then
-            "${STRIP}" "${BIN_PATH}"
-          fi
-          # Let subsequent steps know where to find the (stripped) bin
+          # Let subsequent steps know where to find the bin
           echo "BIN_PATH=${BIN_PATH}" >> $GITHUB_OUTPUT
 
       - name: Publish Release
@@ -130,7 +118,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: |
-            ${{ steps.strip.outputs.BIN_PATH }}
+            ${{ steps.bin-path.outputs.BIN_PATH }}
 
       - name: Publish Pre-Release
         id: publish-pre
@@ -146,7 +134,7 @@ jobs:
           commit: "main"
           name: "renku-cli nightly"
           replacesArtifacts: true
-          artifacts: ${{ steps.strip.outputs.BIN_PATH }}
+          artifacts: ${{ steps.bin-path.outputs.BIN_PATH }}
 
   publish-mac:
     runs-on: macos-latest
@@ -155,17 +143,17 @@ jobs:
       fail-fast: true
       matrix:
         build:
-        - aarch64
-        - amd64
+          - aarch64
+          - amd64
         include:
-        - build: amd64
-          target: x86_64-apple-darwin
-          use-cross: true
-          features: ""
-        - build: aarch64
-          target: aarch64-apple-darwin
-          use-cross: false
-          features: ""
+          - build: amd64
+            target: x86_64-apple-darwin
+            use-cross: true
+            features: ""
+          - build: aarch64
+            target: aarch64-apple-darwin
+            use-cross: false
+            features: ""
     steps:
       - name: Checkout
         uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
