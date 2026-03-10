@@ -96,8 +96,10 @@ pub enum AuthError {
     #[snafu(display("Error reading url: {}", source))]
     UrlParse { source: url::ParseError },
 
-    #[snafu(display("Error retrieving authentication provider metadata: {}", message))]
-    Discover { message: String },
+    #[snafu(display("Error retrieving authentication provider metadata: {}", source))]
+    Discover {
+        source: DiscoveryError<oauth2::reqwest::AsyncHttpClientError>,
+    },
 
     #[snafu(display("Error exchanging tokens: {}", message))]
     CodeExchange { message: String },
@@ -112,9 +114,7 @@ pub async fn get_user_code(renku_url: RenkuUrl) -> Result<UserCode, AuthError> {
 
     let metadata = DeviceProviderMetadata::discover_async(issuer_url, async_http_client)
         .await
-        .map_err(|e| AuthError::Discover {
-            message: format!("{}", e),
-        })?;
+        .map_err(|e| AuthError::Discover { source: e })?;
 
     log::debug!(
         "device auth endpoint: {:?}",
