@@ -108,7 +108,8 @@ existing tag.
 The convenient way is to use the `installer.sh` script that is
 provided from this repository. It will download the correct binary
 from the release page and put it in `/usr/local/bin` on your system.
-It requires `curl` and `sudo` to copy the binary to `/usr/local/bin`.
+It requires `curl`, `jq` and finally `sudo` to copy the binary to
+`/usr/local/bin`.
 
 ```
 curl -sfSL https://raw.githubusercontent.com/SwissDataScienceCenter/renku-cli/main/install.sh | bash
