@@ -5,7 +5,6 @@ pub mod sink;
 use self::cmd::project::Error as ProjectError;
 use self::cmd::{CmdError, Context};
 use self::opts::{MainOpts, SubCommand};
-use clap::CommandFactory;
 use serde::Serialize;
 use std::fmt;
 
@@ -15,10 +14,6 @@ pub async fn execute_cmd(opts: MainOpts) -> Result<(), CmdError> {
     log::info!("Running command: {:?}", opts.subcmd);
     match &opts.subcmd {
         SubCommand::Version(input) => input.exec(&ctx).await?,
-        SubCommand::ShellCompletion(input) => {
-            let mut app = MainOpts::command();
-            input.print_completions(&mut app).await;
-        }
         SubCommand::Project(input) => input.exec(ctx).await?,
         SubCommand::Clone(input) => input
             .exec(ctx)

@@ -1,3 +1,6 @@
+use clap::CommandFactory;
+use clap_complete::CompleteEnv;
+use rnk::cli::opts::MainOpts;
 use rnk::error::{Error, Result};
 use std::process;
 
@@ -12,6 +15,7 @@ async fn main() {
 }
 
 async fn execute() -> Result<()> {
+    CompleteEnv::with_factory(MainOpts::command).complete();
     let opts = rnk::read_args();
     env_logger::Builder::new()
         .filter_level(opts.common_opts.verbosity.log_level_filter())

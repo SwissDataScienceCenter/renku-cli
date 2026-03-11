@@ -91,7 +91,7 @@
           cargoExtraArgs = "";
           postInstall = ''
             for shell in fish zsh bash; do
-               $out/bin/rnk shell-completion --shell $shell > rnk.$shell
+               echo "COMPLETE=$shell rnk" > rnk.$shell
                installShellCompletion --$shell rnk.$shell
             done
           '';
