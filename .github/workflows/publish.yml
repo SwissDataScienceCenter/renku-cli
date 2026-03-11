@@ -1,85 +1,68 @@
 name: Publish
 on:
   push:
+    branches:
+      - "main"
     tags:
       - "v*"
-    branches:
-      - main
+  workflow_dispatch:
 
-concurrency:
-  group: publish-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
+env:
+  GITHUB_TOKEN: ${{ github.token }}
+  RUST_BACKTRACE: 1
 jobs:
-  publish-linux:
-    runs-on: ubuntu-latest
+  release:
+    name: Release - ${{ matrix.platform.os_name }}
+    env:
+      RNK_RELEASE_VERSION: ${{ github.event.release.tag_name }}
     strategy:
-      fail-fast: true
       matrix:
-        build:
-          - aarch64
-          - aarch64-musl
-          - amd64-musl
-          - amd64
-        include:
-          - build: aarch64
-            os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            use-cross: true
-            features: "--no-default-features --features rustls"
-          - build: aarch64-musl
-            os: ubuntu-latest
-            target: aarch64-unknown-linux-musl
-            use-cross: true
-            features: "--no-default-features --features rustls"
-          - build: amd64
-            os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            use-cross: false
-            features: ""
-          - build: amd64-musl
+        platform:
+          - os_name: Linux-x86_64
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            use-cross: true
-            features: "--no-default-features --features rustls"
+            bin: rnk
+            name: rnk-x86_64-unknown-linux-musl-${{RNK_RELEASE_VERSION}}.tar.gz
+            cargo_command: cargo
+
+          - os_name: Linux-aarch64
+            os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            bin: rnk
+            name: rnk-aarch64-unknown-linux-musl-${{RNK_RELEASE_VERSION}}.tar.gz
+            cargo_command: cargo
+
+          - os_name: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: rnk.exe
+            name: rnk-x86_64-pc-windows-msvc-${{RNK_RELEASE_VERSION}}.zip
+            cargo_command: cargo
+
+          - os_name: macOS-x86_64
+            os: macOS-latest
+            target: x86_64-apple-darwin
+            bin: rnk
+            name: rnk-x86_64-apple-darwin-${{RNK_RELEASE_VERSION}}.tar.gz
+            cargo_command: cargo
+
+          - os_name: macOS-aarch64
+            os: macOS-latest
+            target: aarch64-apple-darwin
+            bin: rnk
+            name: rnk-aarch64-apple-darwin-${{RNK_RELEASE_VERSION}}.tar.gz
+            cargo_command: cargo
+
+    runs-on: ${{ matrix.platform.os }}
     steps:
-      - uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Strip version leading v
+        run: echo "RNK_RELEASE_VERSION=${RNK_RELEASE_VERSION##v}" >> $GITHUB_ENV
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          fetch-depth: 0
-
-      - name: Install prerequisites
-        shell: bash
-        run: |
-          sudo apt-get -y update
-          case ${{ matrix.target }} in
-            arm-unknown-linux-gnueabihf) sudo apt-get -y install gcc-arm-linux-gnueabihf ;;
-            aarch64-unknown-linux-gnu) sudo apt-get -y install gcc-aarch64-linux-gnu ;;
-            aarch64-unknown-linux-musl) sudo apt-get -y install gcc-aarch64-linux-gnu ;;
-          esac
-          sudo apt-get -y install libssl-dev openssl pkg-config
-
-      - name: Extract crate information
-        shell: bash
-        run: |
-          echo "PROJECT_NAME=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml | head -n1)" >> $GITHUB_ENV
-          echo "PROJECT_MAINTAINER=$(sed -n 's/^authors = \["\(.*\)"\]/\1/p' Cargo.toml)" >> $GITHUB_ENV
-          echo "PROJECT_HOMEPAGE=$(sed -n 's/^homepage = "\(.*\)"/\1/p' Cargo.toml)" >> $GITHUB_ENV
-          PROJECT_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
-          echo "PROJECT_VERSION=$PROJECT_VERSION" >> $GITHUB_ENV
-          if [[ $PROJECT_VERSION == *-pre ]]; then
-            echo "VERSION_SUFFIX=nightly" >> $GITHUB_ENV
-          else
-            echo "VERSION_SUFFIX=$PROJECT_VERSION" >> $GITHUB_ENV
-          fi
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
-          default: true
-
+          targets: ${{ matrix.platform.target }}
       - name: Show version information (Rust, cargo, GCC)
         shell: bash
         run: |
@@ -89,201 +72,46 @@ jobs:
           rustup default
           cargo -V
           rustc -V
-      - name: Build
-        uses: actions-rs/cargo@v1
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          use-cross: ${{ matrix.use-cross }}
-          command: build
-          args: ${{ matrix.features }} --release --target=${{ matrix.target }}
-
-      - name: set bin path
-        id: bin-path
+          prefix-key: "v0-rust"
+          cache-workspace-crates: "true"
+      - name: Install build dependencies on Linux
+        run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools openssl libssl-dev
+        if: contains(matrix.platform.os, 'ubuntu')
+      - name: Build binary (*nix)
         shell: bash
         run: |
-          # Setup paths
-          BIN_DIR="_cicd/release-bin/"
-          mkdir -p "${BIN_DIR}"
-          BIN_NAME="${{ env.PROJECT_NAME }}"
-          BIN_PATH="${BIN_DIR}/${BIN_NAME}_${{ matrix.build }}-${{ env.VERSION_SUFFIX }}"
-          # Copy the release build binary to the result location
-          cp "target/${{ matrix.target }}/release/${BIN_NAME}" "${BIN_PATH}"
-          # Let subsequent steps know where to find the bin
-          echo "BIN_PATH=${BIN_PATH}" >> $GITHUB_OUTPUT
-
-      - name: Publish Release
-        id: publish
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: |
-            ${{ steps.bin-path.outputs.BIN_PATH }}
-
-      - name: Publish Pre-Release
-        id: publish-pre
-        if: ${{ github.ref }} == 'refs/heads/main'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: "ncipollo/release-action@v1"
-        with:
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: true
-          allowUpdates: true
-          tag: "nightly"
-          commit: "main"
-          name: "renku-cli nightly"
-          replacesArtifacts: true
-          artifacts: ${{ steps.bin-path.outputs.BIN_PATH }}
-
-  publish-mac:
-    runs-on: macos-latest
-
-    strategy:
-      fail-fast: true
-      matrix:
-        build:
-          - aarch64
-          - amd64
-        include:
-          - build: amd64
-            target: x86_64-apple-darwin
-            use-cross: true
-            features: ""
-          - build: aarch64
-            target: aarch64-apple-darwin
-            use-cross: false
-            features: ""
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
-          default: true
-
-      - name: Extract crate information
+          ${{ matrix.platform.cargo_command }} build --locked --release --target ${{ matrix.platform.target }}
+        if: ${{ !contains(matrix.platform.os, 'windows') }}
+      - name: Build binary (Windows)
+        # We have to use the platform's native shell. If we use bash on
+        # Windows then OpenSSL complains that the Perl it finds doesn't use
+        # the platform's native paths and refuses to build.
+        shell: powershell
+        run: |
+          & ${{ matrix.platform.cargo_command }} build --locked --release --target ${{ matrix.platform.target }}
+        if: contains(matrix.platform.os, 'windows')
+      - name: Package as archive
         shell: bash
         run: |
-          echo "PROJECT_NAME=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml | head -n1)" >> $GITHUB_ENV
-          PROJECT_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
-          echo "PROJECT_VERSION=$PROJECT_VERSION" >> $GITHUB_ENV
-          if [[ $PROJECT_VERSION == *-pre ]]; then
-            echo "VERSION_SUFFIX=nightly" >> $GITHUB_ENV
+          cd target/${{ matrix.platform.target }}/release
+          if [[ "${{ matrix.platform.os }}" == "windows-latest" ]]; then
+            7z a ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
           else
-            echo "VERSION_SUFFIX=$PROJECT_VERSION" >> $GITHUB_ENV
+            tar czvf ../../../${{ matrix.platform.name }} ${{ matrix.platform.bin }}
           fi
-
-      - name: Add build env parameters
-        shell: bash
-        run: |
-          echo "SDKROOT=$(xcrun --show-sdk-path)" >> $GITHUB_ENV
-          echo "MACOSX_DEPLOYMENT_TARGET=$(xcrun --show-sdk-platform-version)" >> $GITHUB_ENV
-
-      - name: Build
-        uses: actions-rs/cargo@v1
+          cd -
+      - uses: actions/upload-artifact@v4
         with:
-          use-cross: ${{ matrix.use-cross }}
-          command: build
-          args: ${{ matrix.features }} --release --target=${{ matrix.target }}
-
-      - name: Rename binary
-        run: |
-          mv target/${{ matrix.target }}/release/${{ env.PROJECT_NAME }} target/release/${{ env.PROJECT_NAME }}_darwin-${{ matrix.build }}-${{ env.VERSION_SUFFIX }}
-
-      - name: Publish Release
-        id: publish
+          name: "${{matrix.platform.os_name}}"
+          path: |
+            rnk*.gz
+            rnk*.zip
+      - name: Publish GitHub release
         uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          prerelease: ${{ github.ref }} == "refs/heads/main"
-          files: |
-            target/release/${{ env.PROJECT_NAME }}_darwin-${{ matrix.build }}-${{ env.VERSION_SUFFIX }}
-
-      - name: Publish Pre-Release
-        id: publish-pre
-        if: ${{ github.ref }} == 'refs/heads/main'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: "ncipollo/release-action@v1"
-        with:
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: true
-          allowUpdates: true
-          tag: "nightly"
-          commit: "main"
-          name: "renku-cli nightly"
-          replacesArtifacts: true
-          artifacts: target/release/${{ env.PROJECT_NAME }}_darwin-${{ matrix.build }}-${{ env.VERSION_SUFFIX }}
-
-  publish-win:
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3df4ab11eba7bda6032a0b82a6bb43b11571feac # v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-          default: true
-
-      - name: Extract crate information
-        shell: bash
-        run: |
-          echo "PROJECT_NAME=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml | head -n1)" >> $GITHUB_ENV
-          PROJECT_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)"
-          echo "PROJECT_VERSION=$PROJECT_VERSION" >> $GITHUB_ENV
-          if [[ $PROJECT_VERSION == *-pre ]]; then
-            echo "VERSION_SUFFIX=nightly" >> $GITHUB_ENV
-          else
-            echo "VERSION_SUFFIX=$PROJECT_VERSION" >> $GITHUB_ENV
-          fi
-
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: ${{ matrix.features }} --release
-
-      - name: Rename binary
-        run: |
-          mv target/release/${{ env.PROJECT_NAME }}.exe target/release/${{ env.PROJECT_NAME }}-${{ env.VERSION_SUFFIX }}.exe
-
-      - name: Publish Release
-        id: publish
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: |
-            target/release/${{ env.PROJECT_NAME }}-${{ env.VERSION_SUFFIX }}.exe
-
-      - name: Publish Pre-Release
-        id: publish-pre
-        if: ${{ github.ref }} == 'refs/heads/main'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: "ncipollo/release-action@v1"
-        with:
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: true
-          allowUpdates: true
-          tag: "nightly"
-          commit: "main"
-          name: "renku-cli nightly"
-          replacesArtifacts: true
-          artifacts: target/release/${{ env.PROJECT_NAME }}-${{ env.VERSION_SUFFIX }}.exe
+          draft: true
+          files: "rnk*"
+        if: startsWith( github.ref, 'refs/tags/v' )
