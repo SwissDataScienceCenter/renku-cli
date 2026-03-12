@@ -6,7 +6,9 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
-
+concurrency:
+  group: publish-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 env:
   GITHUB_TOKEN: ${{ github.token }}
   RUST_BACKTRACE: 1
@@ -14,7 +16,7 @@ jobs:
   release:
     name: Release - ${{ matrix.platform.os_name }}
     env:
-      RNK_RELEASE_VERSION: ${{ github.event.release.tag_name }}
+      RNK_RELEASE_VERSION: ${{ github.ref_name }}
     strategy:
       matrix:
         platform:
@@ -110,7 +112,7 @@ jobs:
             rnk*.gz
             rnk*.zip
       - name: Publish GitHub release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           draft: true
           files: "rnk*"
