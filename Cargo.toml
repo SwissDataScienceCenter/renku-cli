@@ -48,6 +48,11 @@ color-eyre = "0.6.5"
 better-panic = "0.3.0"
 human-panic = "2.0.6"
 libc = "0.2.183"
+self_update = { version = "0.43.1", features = [
+  "archive-tar",
+  "archive-zip",
+  "compression-flate2",
+] }
 
 [features]
 default = ["reqwest/default-tls"] # link against system library

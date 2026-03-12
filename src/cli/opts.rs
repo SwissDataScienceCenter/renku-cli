@@ -48,6 +48,8 @@ pub struct CommonOpts {
 pub enum SubCommand {
     #[command()]
     Version(version::Input),
+    #[command()]
+    Update(update::Input),
 
     #[command()]
     Project(project::Input),
