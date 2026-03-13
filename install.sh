@@ -6,12 +6,9 @@ os=$(uname)
 arch=$(uname -m)
 dist=$(uname -o)
 api_url_prefix="${API_URL_PREFIX:-https://api.github.com/repos/SwissDataScienceCenter/renku-cli/releases}"
-dl_url_prefix="${DL_URL_PREFIX:-https://github.com/SwissDataScienceCenter/renku-cli/releases}"
-binary_name="${BINARY_NAME:-rnk}"
 version=""
 check_latest=0
 verbosity=${VERBOSITY:-0}
-jq=""
 tdir="."
 target="/usr/local/bin"
 os_id=""
@@ -47,15 +44,6 @@ assert_exec() {
     fi
 }
 
-curl_silent() {
-    if [ "$verbosity" -eq 0 ]; then
-        curl -sSL -o /dev/null --stderr /dev/null --fail "$@"
-    else
-        debug "curl -sSL --fail $@"
-        curl -sSL -o /dev/null --fail "$@"
-    fi
-}
-
 print_help() {
     debug "Install script for renku-cli for macos and linux"
     debug
@@ -68,34 +56,19 @@ print_help() {
     debug "       Install the given version instead of latest"
 }
 
-find_latest_release_name() {
-    if [ -n "$version" ]; then
-        echo "$version"
-    else
-        # get latest release
-        local latest_response=$(curl -sSL "$api_url_prefix/latest")
-        if [[ -z "$latest_response" ]] || [[ "$latest_response" =~ .*404.* ]]; then
-            debug_v "No latest release. Use nightly."
-            echo "nightly"
-        else
-            debug_v "Latest release response: $latest_response"
-            if [ -z "$jq" ]; then
-                echo $latest_response | tr ',' '\n' | grep "tag_name" | cut -d':' -f2 | tr -d '[:space:]'
-            else
-                echo $latest_response | jq -r '.tag_name'
-            fi
-        fi
-    fi
-}
+find_latest_release() {
+    # get latest release
+    local latest_response=$(curl -sSL "$api_url_prefix/latest")
+    local version=$(echo $latest_response | jq -r '.tag_name')
+    local version_num="${version:1}"
 
-find_binary_name() {
-    local v=$(echo $version | tr -d 'v')
     local suffix=""
     case "$os" in
         Linux)
+        suffix="unknown-linux-musl"
         ;;
         Darwin)
-            suffix="darwin-"
+            suffix="apple-darwin"
             ;;
         *)
             debug "Unknown os: $os"
@@ -104,32 +77,27 @@ find_binary_name() {
 
     case "$arch" in
         x86_64)
-            suffix="${suffix}amd64"
+            suffix="x86_64-${suffix}"
             ;;
         aarch64)
-            suffix="${suffix}aarch64"
+            suffix="aarch64-${suffix}"
             ;;
         arm64)
-            suffix="${suffix}aarch64"
+            suffix="aarch64-${suffix}"
             ;;
         *)
             debug "Unknown architecture: $arch"
             exit 1
     esac
 
-    if [ "$os_id" == "alpine" ]; then
-        suffix="${suffix}-musl"
-    fi
 
-    if [ "$v" == "nightly" ]; then
-        debug_v "Obtain correct version for nightly"
-        v=$(curl -sSL --fail "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-cli/main/Cargo.toml" | grep "^version" | cut -d'=' -f2 | tr -d '[:space:]' | tr -d '"')
-        suffix="${suffix}-$v"
-    else
-        suffix="${suffix}-$v"
+    local name_prefix="rnk-${suffix}-${version_num}"
+    local url=$(echo $latest_response | jq -r ".assets[]|select(.name | startswith(\"$name_prefix\"))|.browser_download_url")
+    if [ -z "$url" ]; then
+        echo "No download url could be found for $name_prefix."
+        exit 1
     fi
-
-    echo "rnk_${suffix}"
+    echo $version_num $url
 }
 
 while getopts "ht:cv" arg; do
@@ -151,13 +119,6 @@ while getopts "ht:cv" arg; do
     esac
 done
 
-## check for jq otherwise use grep
-if ! type -P rjq >/dev/null; then
-    debug_v "jq is not installed, use grep instead"
-else
-    jq="jq"
-fi
-
 # The aarch64 executables won't work on Android
 if [ "$dist" == "Android" ]; then
     debug "Sorry, Android is not yet supported."
@@ -166,6 +127,8 @@ fi
 
 ## check for curl
 assert_exec "curl"
+## check for jq
+assert_exec jq
 ## check for cut, grep (should be available)
 assert_exec "cut"
 assert_exec "grep"
@@ -176,7 +139,7 @@ fi
 
 if [ $check_latest -eq 1 ]; then
     debug_v "Check for latest version only"
-    find_latest_release_name
+    find_latest_release
     exit 0
 else
     # Check for nixos
@@ -189,17 +152,17 @@ else
         ## check for sudo first
         assert_exec "sudo"
 
-        version=$(find_latest_release_name)
-        binary=$(find_binary_name)
-        url="$dl_url_prefix/download/$version/$binary"
-        debug "Getting renku-cli $version..."
+        read version url < <(find_latest_release)
+        debug "Getting renku-cli $version ..."
         debug_v "from: $url"
-        curl -# -sSL --fail -o "$tdir/rnk" "$url"
+        curl -# -sSL --fail -o "$tdir/rnk.tar.gz" "$url"
+        tar -xzf "$tdir/rnk.tar.gz" -C "$tdir"
+        
         chmod 755 "$tdir/rnk"
 
         debug "Installing to $target"
         sudo mkdir -p "$target"
-        sudo cp "$tdir/rnk" "$target/$binary_name"
+        sudo cp "$tdir/rnk" "$target/rnk"
         debug "Done."
     fi
 fi
