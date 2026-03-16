@@ -1,17 +1,14 @@
 use clap::CommandFactory;
 use clap_complete::CompleteEnv;
+use color_eyre::Result as EyreResult;
 use rnk::cli::opts::MainOpts;
-use rnk::error::{Error, Result};
-use std::process;
+use rnk::error::Result;
 
 #[tokio::main]
-async fn main() {
-    let error_style = console::Style::new().red().bright();
-    let result = execute().await;
-    if let Err(err) = result {
-        eprintln!("{}", error_style.apply_to(&err));
-        process::exit(exit_code(&err));
-    }
+async fn main() -> EyreResult<()> {
+    rnk::error::init()?;
+    execute().await?;
+    Ok(())
 }
 
 async fn execute() -> Result<()> {
@@ -24,10 +21,4 @@ async fn execute() -> Result<()> {
     let result = rnk::execute_cmd(opts).await;
     result?;
     Ok(())
-}
-
-fn exit_code(err: &Error) -> i32 {
-    match err {
-        Error::Cmd { source: _ } => 1,
-    }
 }
