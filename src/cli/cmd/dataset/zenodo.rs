@@ -24,8 +24,10 @@ pub struct ZenodoClient {
     debug: bool,
 }
 
-static BASE_URL: LazyLock<Url> =
-    LazyLock::new(|| Url::parse("https://zenodo.org").expect("Invalid Base URL config"));
+static BASE_URL: LazyLock<Url> = LazyLock::new(|| {
+    Url::parse(&std::env::var("ZENODO_URL").unwrap_or("https://zenodo.org".to_string()))
+        .expect("Invalid Base URL config")
+});
 
 #[derive(Debug, Snafu)]
 pub enum Error {
