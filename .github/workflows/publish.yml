@@ -36,7 +36,7 @@ jobs:
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
             bin: rnk
-            name: rnk-x86_64-unknown-linux-musl-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
+            name: rnk-x86_64-unknown-linux-musl-${{ needs.prepare-version.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
             features: "--no-default-features --features vendored-openssl"
 
@@ -44,7 +44,7 @@ jobs:
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
             bin: rnk
-            name: rnk-aarch64-unknown-linux-musl-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
+            name: rnk-aarch64-unknown-linux-musl-${{ needs.prepare-version.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
             features: "--no-default-features --features vendored-openssl"
 
@@ -52,7 +52,7 @@ jobs:
             os: windows-latest
             target: x86_64-pc-windows-msvc
             bin: rnk.exe
-            name: rnk-x86_64-pc-windows-msvc-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.zip
+            name: rnk-x86_64-pc-windows-msvc-${{ needs.prepare-version.outputs.RNK_RELEASE_VERSION}}.zip
             cargo_command: cargo
             features: "--no-default-features --features vendored-openssl"
 
@@ -60,7 +60,7 @@ jobs:
             os: macOS-latest
             target: x86_64-apple-darwin
             bin: rnk
-            name: rnk-x86_64-apple-darwin-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
+            name: rnk-x86_64-apple-darwin-${{ needs.prepare-version.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
             features: "--no-default-features --features vendored-openssl"
 
@@ -68,7 +68,7 @@ jobs:
             os: macOS-latest
             target: aarch64-apple-darwin
             bin: rnk
-            name: rnk-aarch64-apple-darwin-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
+            name: rnk-aarch64-apple-darwin-${{ needs.prepare-version.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
             features: "--no-default-features --features vendored-openssl"
 
