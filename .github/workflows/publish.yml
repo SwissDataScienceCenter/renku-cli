@@ -12,11 +12,23 @@ concurrency:
 env:
   GITHUB_TOKEN: ${{ github.token }}
   RUST_BACKTRACE: 1
+  RNK_RELEASE_VERSION: ${{ github.ref_name }}
 jobs:
+  # strategy.matrix can't access enviroment variables, so we have a dummy step that sets it as an output,
+  # which can be used in a matrix.
+  prepare-version:
+    runs-on: ubuntu-latest
+    outputs:
+      RNK_RELEASE_VERSION: ${{ steps.compute.outputs.RNK_RELEASE_VERSION }}
+    steps:
+      - name: Compute outputs
+        id: compute
+        run: |
+          echo "RNK_RELEASE_VERSION=${{ env.RNK_RELEASE_VERSION }}" >> $GITHUB_OUTPUT
+
   release:
     name: Release - ${{ matrix.platform.os_name }}
-    env:
-      RNK_RELEASE_VERSION: ${{ github.ref_name }}
+    needs: prepare-version
     strategy:
       matrix:
         platform:
@@ -24,35 +36,35 @@ jobs:
             os: ubuntu-latest
             target: x86_64-unknown-linux-musl
             bin: rnk
-            name: rnk-x86_64-unknown-linux-musl-${{RNK_RELEASE_VERSION}}.tar.gz
+            name: rnk-x86_64-unknown-linux-musl-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
 
           - os_name: Linux-aarch64
             os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
             bin: rnk
-            name: rnk-aarch64-unknown-linux-musl-${{RNK_RELEASE_VERSION}}.tar.gz
+            name: rnk-aarch64-unknown-linux-musl-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
 
           - os_name: Windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
             bin: rnk.exe
-            name: rnk-x86_64-pc-windows-msvc-${{RNK_RELEASE_VERSION}}.zip
+            name: rnk-x86_64-pc-windows-msvc-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.zip
             cargo_command: cargo
 
           - os_name: macOS-x86_64
             os: macOS-latest
             target: x86_64-apple-darwin
             bin: rnk
-            name: rnk-x86_64-apple-darwin-${{RNK_RELEASE_VERSION}}.tar.gz
+            name: rnk-x86_64-apple-darwin-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
 
           - os_name: macOS-aarch64
             os: macOS-latest
             target: aarch64-apple-darwin
             bin: rnk
-            name: rnk-aarch64-apple-darwin-${{RNK_RELEASE_VERSION}}.tar.gz
+            name: rnk-aarch64-apple-darwin-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
 
     runs-on: ${{ matrix.platform.os }}
