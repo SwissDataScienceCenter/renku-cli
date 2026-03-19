@@ -14,6 +14,7 @@ pub async fn execute_cmd(opts: MainOpts) -> Result<(), CmdError> {
     log::info!("Running command: {:?}", opts.subcmd);
     match &opts.subcmd {
         SubCommand::Version(input) => input.exec(&ctx).await?,
+        SubCommand::Update(input) => input.exec(&ctx).await?,
         SubCommand::Project(input) => input.exec(ctx).await?,
         SubCommand::Clone(input) => input
             .exec(ctx)

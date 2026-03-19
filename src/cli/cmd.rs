@@ -1,5 +1,6 @@
 pub mod login;
 pub mod project;
+pub mod update;
 #[cfg(feature = "user-doc")]
 pub mod userdoc;
 pub mod version;
@@ -96,6 +97,9 @@ pub enum CmdError {
     #[snafu(display("Version - {}", source))]
     Version { source: version::Error },
 
+    #[snafu(display("Update - {}", source))]
+    Update { source: update::Error },
+
     #[snafu(display("Project - {}", source))]
     Project { source: project::Error },
 
@@ -110,6 +114,11 @@ pub enum CmdError {
 impl From<version::Error> for CmdError {
     fn from(source: version::Error) -> Self {
         CmdError::Version { source }
+    }
+}
+impl From<update::Error> for CmdError {
+    fn from(source: update::Error) -> Self {
+        CmdError::Update { source }
     }
 }
 
