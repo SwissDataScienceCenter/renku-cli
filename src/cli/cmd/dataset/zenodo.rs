@@ -1,6 +1,6 @@
 use futures::stream::StreamExt;
 use md5::Context as Md5Context;
-use reqwest::header::{HeaderMap, ACCEPT, CONTENT_LENGTH, CONTENT_TYPE};
+use reqwest::header::{ACCEPT, CONTENT_LENGTH, CONTENT_TYPE, HeaderMap};
 use reqwest::{self, Body, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use snafu::{ResultExt, Snafu};

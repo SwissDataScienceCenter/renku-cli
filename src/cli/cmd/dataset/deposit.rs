@@ -32,7 +32,15 @@ impl CopyInput {
         match ctx.provider {
             Provider::Zenodo => {
                 let token = std::env::var("ZENODO_API_KEY").context(EnvVarMissingSnafu)?;
-                let clnt = zenodo::ZenodoClient::new(token, ctx.parent.opts.verbose > 1);
+                let clnt = zenodo::ZenodoClient::new(
+                    token,
+                    ctx.parent
+                        .opts
+                        .verbosity
+                        .log_level()
+                        .unwrap_or(log::Level::Warn)
+                        > log::Level::Info,
+                );
                 clnt.upload_files(&self.deposit_id, &self.source_dir)
                     .await
                     .context(ZenodoSnafu)
@@ -50,7 +58,15 @@ impl ListInput {
         match ctx.provider {
             Provider::Zenodo => {
                 let token = std::env::var("ZENODO_API_KEY").context(EnvVarMissingSnafu)?;
-                let clnt = zenodo::ZenodoClient::new(token, ctx.parent.opts.verbose > 1);
+                let clnt = zenodo::ZenodoClient::new(
+                    token,
+                    ctx.parent
+                        .opts
+                        .verbosity
+                        .log_level()
+                        .unwrap_or(log::Level::Warn)
+                        > log::Level::Info,
+                );
                 let deps = clnt.get_depositions().await.context(ZenodoSnafu)?;
                 let mut table = Builder::default();
                 table.push_record(["ID", "Title", "State", "Created at"]);
@@ -81,7 +97,15 @@ impl ListFiles {
         match ctx.provider {
             Provider::Zenodo => {
                 let token = std::env::var("ZENODO_API_KEY").context(EnvVarMissingSnafu)?;
-                let clnt = zenodo::ZenodoClient::new(token, ctx.parent.opts.verbose > 1);
+                let clnt = zenodo::ZenodoClient::new(
+                    token,
+                    ctx.parent
+                        .opts
+                        .verbosity
+                        .log_level()
+                        .unwrap_or(log::Level::Warn)
+                        > log::Level::Info,
+                );
                 let files = clnt
                     .list_files(&self.deposit_id)
                     .await
