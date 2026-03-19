@@ -91,7 +91,7 @@ find_latest_release() {
     esac
 
 
-    local name_prefix="rnk-${suffix}-${version_num}"
+    local name_prefix="rnk-${suffix}-v${version_num}"
     local url=$(echo $latest_response | jq -r ".assets[]|select(.name | startswith(\"$name_prefix\"))|.browser_download_url")
     if [ -z "$url" ]; then
         echo "No download url could be found for $name_prefix."
