@@ -38,7 +38,7 @@ jobs:
             bin: rnk
             name: rnk-x86_64-unknown-linux-musl-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
-            features: "--no-default-features --features vendored-openssl"
+            features: "--no-default-features --features rustls"
 
           - os_name: Linux-aarch64
             os: ubuntu-24.04-arm
@@ -46,7 +46,7 @@ jobs:
             bin: rnk
             name: rnk-aarch64-unknown-linux-musl-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
-            features: "--no-default-features --features vendored-openssl"
+            features: "--no-default-features --features rustls"
 
           - os_name: Windows-x86_64
             os: windows-latest
@@ -54,7 +54,7 @@ jobs:
             bin: rnk.exe
             name: rnk-x86_64-pc-windows-msvc-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.zip
             cargo_command: cargo
-            features: "--no-default-features --features vendored-openssl"
+            features: "--no-default-features --features rustls"
 
           - os_name: macOS-x86_64
             os: macOS-latest
@@ -62,7 +62,7 @@ jobs:
             bin: rnk
             name: rnk-x86_64-apple-darwin-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
-            features: "--no-default-features --features vendored-openssl"
+            features: "--no-default-features --features rustls"
 
           - os_name: macOS-aarch64
             os: macOS-latest
@@ -70,7 +70,7 @@ jobs:
             bin: rnk
             name: rnk-aarch64-apple-darwin-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
-            features: "--no-default-features --features vendored-openssl"
+            features: "--no-default-features --features rustls"
 
     runs-on: ${{ matrix.platform.os }}
     steps:
