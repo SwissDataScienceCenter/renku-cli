@@ -3,6 +3,7 @@ name = "rnk"
 description = "A command line interface to the Renku platform"
 homepage = "https://renkulab.io/"
 edition = "2024"
+resolver = "3"
 license = "Apache-2.0"
 repository = "https://github.com/SwissDatascienceCenter/renku-cli"
 keywords = ["renku", "cli"]

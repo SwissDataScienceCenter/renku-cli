@@ -97,7 +97,9 @@ jobs:
           prefix-key: "v0-rust"
           cache-workspace-crates: "true"
       - name: Install build dependencies on Linux
-        run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools openssl libssl-dev pkg-config
+        run: |
+          sudo apt-get update --yes && sudo apt-get install --yes musl-tools openssl libssl-dev pkg-config
+          PKG_CONFIG_ALLOW_SYSTEM_CFLAGS=1 pkg-config --libs --cflags openssl
         if: contains(matrix.platform.os, 'ubuntu')
       - name: Build binary (*nix)
         shell: bash
