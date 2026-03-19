@@ -38,6 +38,7 @@ jobs:
             bin: rnk
             name: rnk-x86_64-unknown-linux-musl-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
+            features: "--no-default-features --features rustls"
 
           - os_name: Linux-aarch64
             os: ubuntu-24.04-arm
@@ -45,6 +46,7 @@ jobs:
             bin: rnk
             name: rnk-aarch64-unknown-linux-musl-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
+            features: "--no-default-features --features rustls"
 
           - os_name: Windows-x86_64
             os: windows-latest
@@ -52,6 +54,7 @@ jobs:
             bin: rnk.exe
             name: rnk-x86_64-pc-windows-msvc-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.zip
             cargo_command: cargo
+            features: ""
 
           - os_name: macOS-x86_64
             os: macOS-latest
@@ -59,6 +62,7 @@ jobs:
             bin: rnk
             name: rnk-x86_64-apple-darwin-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
+            features: ""
 
           - os_name: macOS-aarch64
             os: macOS-latest
@@ -66,6 +70,7 @@ jobs:
             bin: rnk
             name: rnk-aarch64-apple-darwin-${{ needs.compute.outputs.RNK_RELEASE_VERSION}}.tar.gz
             cargo_command: cargo
+            features: ""
 
     runs-on: ${{ matrix.platform.os }}
     steps:
@@ -97,7 +102,7 @@ jobs:
       - name: Build binary (*nix)
         shell: bash
         run: |
-          ${{ matrix.platform.cargo_command }} build --locked --release --target ${{ matrix.platform.target }}
+          ${{ matrix.platform.cargo_command }} build --locked --release ${{ matrix.platform.features }} --target ${{ matrix.platform.target }}
         if: ${{ !contains(matrix.platform.os, 'windows') }}
       - name: Build binary (Windows)
         # We have to use the platform's native shell. If we use bash on
@@ -105,7 +110,7 @@ jobs:
         # the platform's native paths and refuses to build.
         shell: powershell
         run: |
-          & ${{ matrix.platform.cargo_command }} build --locked --release --target ${{ matrix.platform.target }}
+          & ${{ matrix.platform.cargo_command }} build --locked --release ${{ matrix.platform.features }} --target ${{ matrix.platform.target }}
         if: contains(matrix.platform.os, 'windows')
       - name: Package as archive
         shell: bash
