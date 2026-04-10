@@ -4,7 +4,7 @@ use clap::Parser;
 use snafu::{ResultExt, Snafu};
 use std::env::VarError;
 use std::path::PathBuf;
-use tabled::builder::Builder;
+use tabled::Table;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -68,18 +68,7 @@ impl ListInput {
                         > log::Level::Info,
                 );
                 let deps = clnt.get_depositions().await.context(ZenodoSnafu)?;
-                let mut table = Builder::default();
-                table.push_record(["ID", "Title", "State", "Created at"]);
-                for d in deps {
-                    table.push_record([
-                        d.id.to_string(),
-                        d.title,
-                        d.state,
-                        d.created
-                            .to_rfc3339_opts(chrono::SecondsFormat::Secs, false),
-                    ]);
-                }
-                println!("{}", table.build());
+                println!("{}", Table::new(deps));
                 Ok(())
             }
         }
@@ -110,12 +99,7 @@ impl ListFiles {
                     .list_files(&self.deposit_id)
                     .await
                     .context(ZenodoSnafu)?;
-                let mut table = Builder::default();
-                table.push_record(["Filename", "Size", "Checksum"]);
-                for f in files {
-                    table.push_record([f.filename, f.filesize.to_string(), f.checksum]);
-                }
-                println!("{}", table.build());
+                println!("{}", Table::new(files));
                 Ok(())
             }
         }
