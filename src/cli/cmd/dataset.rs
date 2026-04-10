@@ -42,7 +42,7 @@ pub enum DepositCommand {
         about = "Copy and upload local files into the deposit"
     )]
     CopyFiles(deposit::CopyInput),
-    #[command(name = "list", about = "List all deposits")]
+    #[command(name = "list", about = "List all deposits", alias = "ls")]
     ListDeposits(deposit::ListInput),
     #[command(name = "lsf", about = "List all files in a specific deposit")]
     ListFiles(deposit::ListFiles),

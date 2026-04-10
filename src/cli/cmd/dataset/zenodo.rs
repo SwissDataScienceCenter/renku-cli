@@ -52,7 +52,7 @@ pub enum Error {
     #[snafu(display("Stripping file prefix failed {}", source))]
     StripPathPrefix { source: StripPrefixError },
 
-    #[snafu(display("An error occured desearializing the response to json: {}", source))]
+    #[snafu(display("An error occured deserializing the response to json: {}", source))]
     DeserializeJson { source: serde_json::Error },
 
     #[snafu(display(
@@ -125,12 +125,14 @@ impl ZenodoClient {
                 .unwrap_or(false)
         }
         let walker = WalkDir::new(source_path).into_iter();
+        let existing_files = self.list_files(deposition_id).await?;
         for (f_ind, f) in walker.filter_entry(|e| !is_hidden(e)).enumerate() {
             let path = f.context(DirWalkSnafu)?;
             let path_std = path.path();
-            if f_ind == 0 && path_std.is_dir() {
+            if f_ind == 0 && source_path.is_dir() && path_std.is_dir() {
                 // If the source path is a dir the first entry of the walk is the same dir that was
                 // passed
+                // See https://docs.rs/walkdir/latest/walkdir/struct.WalkDir.html#method.new
                 continue;
             }
             if path_std.is_dir() {
@@ -150,8 +152,7 @@ impl ZenodoClient {
                     fp: path_std.to_path_buf(),
                 })?;
             log::info!("uploading file {} -> {}", path_std.display(), remote_path);
-            let existing_files = self.list_files(deposition_id).await?;
-            self.upload_file(bucket, path_std, remote_path, existing_files)
+            self.upload_file(bucket, path_std, remote_path, &existing_files)
                 .await?;
         }
         Ok(())
@@ -174,7 +175,7 @@ impl ZenodoClient {
         bucket_url: &str,
         local_file: &Path,
         remote_file: &str,
-        existing_files: Vec<FileResponse>,
+        existing_files: &[FileResponse],
     ) -> Result<FileUploadResponse, Error> {
         let file = File::open(local_file).await.context(FileReadingSnafu)?;
         let metadata = file.metadata().await.context(FileReadingSnafu)?;
