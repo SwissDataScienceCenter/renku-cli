@@ -36,11 +36,15 @@ pub enum DatasetCommand {
 
 #[derive(Parser, Debug)]
 pub enum DepositCommand {
-    #[command(name = "cp")]
+    #[command(
+        name = "copy",
+        alias = "cp",
+        about = "Copy and upload local files into the deposit"
+    )]
     CopyFiles(deposit::CopyInput),
-    #[command(name = "ls")]
+    #[command(name = "list", about = "List all deposits")]
     ListDeposits(deposit::ListInput),
-    #[command(name = "lsf")]
+    #[command(name = "lsf", about = "List all files in a specific deposit")]
     ListFiles(deposit::ListFiles),
 }
 
