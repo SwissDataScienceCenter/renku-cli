@@ -23,6 +23,7 @@ pub struct FileResponse {
 }
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct FileUploadResponse {
     pub key: String,
     pub mimetype: String,
