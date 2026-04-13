@@ -68,7 +68,7 @@ enum Steps<'a> {
     Complete,
 }
 impl Input {
-    fn get_steps(&self) -> Steps<'_> {
+    fn get_steps(&'_ self) -> Steps<'_> {
         if let Some(p) = &self.continue_from {
             Steps::Continue(p)
         } else if self.user_code_only {
