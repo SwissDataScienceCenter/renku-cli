@@ -1,4 +1,5 @@
 pub mod start;
+pub mod stop;
 
 use super::Context;
 use clap::Parser;
@@ -8,6 +9,9 @@ use snafu::{ResultExt, Snafu};
 pub enum Error {
     #[snafu(display("Error starting job: {}", source))]
     Start { source: start::Error },
+
+    #[snafu(display("Error stopping job: {}", source))]
+    Stop { source: stop::Error },
 }
 
 /// Sub command for managing projects
@@ -21,6 +25,7 @@ impl Input {
     pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
         match &self.subcmd {
             JobCommand::Start(input) => input.exec(ctx).await.context(StartSnafu),
+            JobCommand::Stop(input) => input.exec(ctx).await.context(StopSnafu),
         }
     }
 }
@@ -29,4 +34,7 @@ impl Input {
 pub enum JobCommand {
     #[command()]
     Start(start::Input),
+
+    #[command()]
+    Stop(stop::Input),
 }

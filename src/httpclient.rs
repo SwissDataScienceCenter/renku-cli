@@ -184,6 +184,7 @@ impl Client {
         }
     }
 
+    /// Runs a POST request to the given url.
     async fn json_post<I: Serialize, R: DeserializeOwned>(
         &self,
         path: &str,
@@ -356,6 +357,17 @@ impl Client {
             .json_post::<SessionStartRequest, SessionStartResponse>(&path, &req, debug)
             .await?;
         Ok(details)
+    }
+
+    pub async fn stop_session(&self, session_id: &str) -> Result<(), Error> {
+        log::debug!("Stop session: {}", session_id);
+        let path = format!("/api/data/sessions/{}", session_id);
+        let url = self.make_url(&path)?;
+        self.set_bearer_token(self.client.delete(url.clone()))
+            .send()
+            .await
+            .context(HttpSnafu { url: url })?;
+        Ok(())
     }
 
     pub async fn start_login_flow(&self) -> Result<UserCode, Error> {
