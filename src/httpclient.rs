@@ -37,7 +37,7 @@ use auth::{Response, UserCode};
 use openidconnect::OAuth2TokenResponse;
 use regex::Regex;
 use reqwest::{Certificate, ClientBuilder, IntoUrl, RequestBuilder, Url};
-use serde::de::DeserializeOwned;
+use serde::{Serialize, de::DeserializeOwned};
 use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
 
@@ -184,6 +184,30 @@ impl Client {
         }
     }
 
+    async fn json_post<I: Serialize, R: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &I,
+        debug: bool,
+    ) -> Result<R, Error> {
+        let url = self.make_url(path)?;
+        log::debug!("JSON POST: {}", url);
+
+        let resp = self
+            .set_bearer_token(self.client.post(url.clone()))
+            .json::<I>(&body)
+            .send()
+            .await
+            .context(HttpSnafu { url: url.clone() })?;
+        if debug {
+            let body = resp.text().await.context(DeserializeRespSnafu)?;
+            log::debug!("POST {} -> {}", url, body);
+            serde_json::from_str::<R>(&body).context(DeserializeJsonSnafu)
+        } else {
+            resp.json::<R>().await.context(DeserializeRespSnafu)
+        }
+    }
+
     /// Runs a GET request to the given url. When `debug` is true, the
     /// response is first decoded into utf8 chars and logged at debug
     /// level. Otherwise bytes are directly decoded from JSON into the
@@ -316,6 +340,20 @@ impl Client {
 
         let details = client
             .json_get_option::<ProjectDetails>(&path, debug)
+            .await?;
+        Ok(details)
+    }
+
+    pub async fn start_session(
+        &self,
+        req: SessionStartRequest,
+        debug: bool,
+    ) -> Result<SessionStartResponse, Error> {
+        log::debug!("Starting session: {}", req);
+
+        let path = "/api/data/sessions";
+        let details = self
+            .json_post::<SessionStartRequest, SessionStartResponse>(&path, &req, debug)
             .await?;
         Ok(details)
     }

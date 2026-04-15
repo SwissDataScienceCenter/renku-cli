@@ -61,3 +61,4 @@ impl Sink for BuildInfo {}
 impl Sink for PathEntry {}
 impl Sink for UserCode {}
 impl Sink for Response {}
+impl Sink for SessionStartResponse {}

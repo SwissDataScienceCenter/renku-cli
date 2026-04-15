@@ -6,6 +6,39 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct SessionStartRequest {
+    pub launcher_id: String,
+    pub session_type: String,
+}
+impl fmt::Display for SessionStartRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SessionStart(launcher={}, session_type={})",
+            self.launcher_id, self.session_type
+        )
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionStartResponse {
+    image: String,
+    name: String,
+    project_id: String,
+    launcher_id: String,
+}
+
+impl fmt::Display for SessionStartResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SessionStartResponse({}, image={})",
+            self.name, self.image
+        )
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Visibility {
     #[serde(alias = "public")]
     Public,
