@@ -1,3 +1,4 @@
+pub mod list;
 pub mod start;
 pub mod stop;
 
@@ -12,6 +13,9 @@ pub enum Error {
 
     #[snafu(display("Error stopping job: {}", source))]
     Stop { source: stop::Error },
+
+    #[snafu(display("Error listing jobs: {}", source))]
+    List { source: list::Error },
 }
 
 /// Sub command for managing projects
@@ -26,6 +30,7 @@ impl Input {
         match &self.subcmd {
             JobCommand::Start(input) => input.exec(ctx).await.context(StartSnafu),
             JobCommand::Stop(input) => input.exec(ctx).await.context(StopSnafu),
+            JobCommand::List(input) => input.exec(ctx).await.context(ListSnafu),
         }
     }
 }
@@ -37,4 +42,7 @@ pub enum JobCommand {
 
     #[command()]
     Stop(stop::Input),
+
+    #[command()]
+    List(list::Input),
 }

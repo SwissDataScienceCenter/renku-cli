@@ -21,6 +21,24 @@ impl fmt::Display for SessionStartRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct SessionList(pub Vec<SessionStartResponse>);
+
+impl fmt::Display for SessionList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let lines = self
+            .0
+            .iter()
+            .fold(String::new(), |a, b| format!("{}\n - {}", a, b));
+
+        if self.0.is_empty() {
+            write!(f, "No sessions found.")
+        } else {
+            write!(f, "Sessions\n{}", lines)
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SessionStartResponse {
     image: String,
     name: String,

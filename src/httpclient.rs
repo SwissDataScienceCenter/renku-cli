@@ -370,6 +370,13 @@ impl Client {
         Ok(())
     }
 
+    pub async fn list_sessions(&self) -> Result<SessionList, Error> {
+        let result = self
+            .json_get::<Vec<SessionStartResponse>>("/api/data/sessions", true)
+            .await?;
+        Ok(SessionList(result))
+    }
+
     pub async fn start_login_flow(&self) -> Result<UserCode, Error> {
         let c = auth::get_user_code(self.settings.base_url.clone()).await?;
         Ok(c)
