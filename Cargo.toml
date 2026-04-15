@@ -60,6 +60,7 @@ self_update = { version = "0.43.1", features = [
   "compression-flate2",
 ] }
 md5 = "0.8.0"
+ulid = "1.2.1"
 
 [features]
 default = ["reqwest/default-tls"] # link against system library

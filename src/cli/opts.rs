@@ -66,6 +66,9 @@ pub enum SubCommand {
 
     #[command()]
     Dataset(dataset::Input),
+
+    #[command()]
+    Job(job::Input),
 }
 
 /// This is the command line interface to the Renku platform. Main

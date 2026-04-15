@@ -1,4 +1,5 @@
 pub mod dataset;
+pub mod job;
 pub mod login;
 pub mod project;
 pub mod update;
@@ -113,6 +114,15 @@ pub enum CmdError {
 
     #[snafu(display("Dataset - {}", source))]
     Dataset { source: dataset::Error },
+
+    #[snafu(display("Job - {}", source))]
+    Job { source: job::Error },
+}
+
+impl From<job::Error> for CmdError {
+    fn from(source: job::Error) -> Self {
+        CmdError::Job { source }
+    }
 }
 
 impl From<version::Error> for CmdError {
