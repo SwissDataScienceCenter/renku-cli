@@ -370,11 +370,30 @@ impl Client {
         Ok(())
     }
 
-    pub async fn list_sessions(&self) -> Result<SessionList, Error> {
-        let result = self
-            .json_get::<Vec<SessionStartResponse>>("/api/data/sessions", true)
-            .await?;
+    pub async fn list_sessions(&self, mode: Option<SessionMode>) -> Result<SessionList, Error> {
+        let url = self.make_url("/api/data/sessions")?;
+        log::debug!(
+            "List sessions: {}?session_mode={}",
+            url,
+            mode.as_ref().map_or("", |e| e.to_query_param())
+        );
+        let mut req = self.set_bearer_token(self.client.get(url.clone()));
+        if let Some(m) = mode {
+            req = req.query(&[("session_type", m.to_query_param())])
+        }
+
+        let resp = req.send().await.context(HttpSnafu { url: url.clone() })?;
+        let result = resp
+            .json::<Vec<SessionStartResponse>>()
+            .await
+            .context(DeserializeRespSnafu)?;
         Ok(SessionList(result))
+    }
+
+    pub async fn session_logs(&self, session_id: &str) -> Result<SessionLogs, Error> {
+        let path = format!("/api/data/sessions/{}/logs", session_id);
+        let result = self.json_get::<SessionLogs>(&path, true).await?;
+        Ok(result)
     }
 
     pub async fn start_login_flow(&self) -> Result<UserCode, Error> {

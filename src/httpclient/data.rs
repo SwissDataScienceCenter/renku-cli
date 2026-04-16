@@ -3,7 +3,41 @@
 
 use iso8601_timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{collections::HashMap, fmt};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionLogs(pub HashMap<String, String>);
+
+impl fmt::Display for SessionLogs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (k, v) in &self.0 {
+            write!(f, "- {}\n", k)?;
+            write!(f, "{}", v)?;
+        }
+        write!(f, "")
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum SessionMode {
+    Interactive,
+    NonInteractive,
+}
+
+impl fmt::Display for SessionMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_query_param())
+    }
+}
+
+impl SessionMode {
+    pub fn to_query_param(&self) -> &str {
+        match self {
+            SessionMode::Interactive => "interactive",
+            SessionMode::NonInteractive => "non-interactive",
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionStartRequest {
@@ -25,15 +59,14 @@ pub struct SessionList(pub Vec<SessionStartResponse>);
 
 impl fmt::Display for SessionList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lines = self
-            .0
-            .iter()
-            .fold(String::new(), |a, b| format!("{}\n - {}", a, b));
+        let lines = self.0.iter().fold(String::new(), |a, b| {
+            format!("{}\n - {} (image={})", a, b.name, b.image)
+        });
 
         if self.0.is_empty() {
             write!(f, "No sessions found.")
         } else {
-            write!(f, "Sessions\n{}", lines)
+            write!(f, "Sessions:{}", lines)
         }
     }
 }

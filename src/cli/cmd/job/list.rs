@@ -1,6 +1,6 @@
 use super::Context;
-use crate::cli::sink::Error as SinkError;
 use crate::httpclient::Error as HttpError;
+use crate::{cli::sink::Error as SinkError, httpclient::data::SessionMode};
 
 use clap::Parser;
 
@@ -23,7 +23,11 @@ pub enum Error {
 
 impl Input {
     pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
-        let result = ctx.client.list_sessions().await.context(HttpClientSnafu)?;
+        let result = ctx
+            .client
+            .list_sessions(Some(SessionMode::NonInteractive))
+            .await
+            .context(HttpClientSnafu)?;
 
         ctx.write_result(&result).await.context(WriteResultSnafu)?;
         Ok(())

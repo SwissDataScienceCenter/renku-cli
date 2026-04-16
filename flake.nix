@@ -6,7 +6,6 @@
 
     crane = {
       url = "github:ipetkov/crane";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     fenix = {
@@ -42,12 +41,14 @@
       craneLib = crane.mkLib pkgs;
       src = craneLib.cleanCargoSource ./.;
       docSrc = ./docs;
+      version = "0.0.0";
 
       fenixToolChain = fenix.packages.${system}.complete;
 
       # Common arguments can be set here to avoid repeating them later
       commonArgs = {
         inherit src;
+        inherit version;
         strictDeps = true;
 
         nativeBuildInputs = [
@@ -128,17 +129,20 @@
         # Check formatting
         my-crate-fmt = craneLib.cargoFmt {
           inherit src;
+          inherit version;
         };
 
         # Audit dependencies
         my-crate-audit = craneLib.cargoAudit {
           inherit src advisory-db;
           cargoAuditExtraArgs = "--ignore RUSTSEC-2023-0071";
+          inherit version;
         };
 
         # Audit licenses
         my-crate-deny = craneLib.cargoDeny {
           inherit src;
+          inherit version;
         };
 
         # Run tests with cargo-nextest
