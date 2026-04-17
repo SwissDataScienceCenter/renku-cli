@@ -36,13 +36,7 @@ impl Input {
             let vinfo = BuildInfo::default();
             ctx.write_result(&vinfo).await.context(WriteResultSnafu)?;
         } else {
-            let result = ctx
-                .client
-                .version(
-                    ctx.opts.verbosity.log_level().unwrap_or(log::Level::Warn) > log::Level::Info,
-                )
-                .await
-                .context(HttpClientSnafu)?;
+            let result = ctx.client.version().await.context(HttpClientSnafu)?;
             let urlstr = ctx.renku_url().as_str();
             let vinfo = Versions::create(result, urlstr);
             ctx.write_result(&vinfo).await.context(WriteResultSnafu)?;

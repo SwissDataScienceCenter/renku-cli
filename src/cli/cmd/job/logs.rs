@@ -1,6 +1,5 @@
 use super::Context;
-use crate::httpclient::Error as HttpError;
-use crate::{cli::sink::Error as SinkError, data::simple_message::SimpleMessage};
+use crate::{cli::sink::Error as SinkError, data::simple_message::SimpleMessage, httpclient};
 
 use clap::{Parser, ValueHint};
 
@@ -17,11 +16,11 @@ pub struct Input {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("An http error occurred: {}", source))]
-    HttpClient { source: HttpError },
-
     #[snafu(display("Error writing data: {}", source))]
     WriteResult { source: SinkError },
+
+    #[snafu(display("Http error: {}", source))]
+    HttpClient { source: httpclient::Error },
 }
 
 impl Input {
@@ -37,14 +36,13 @@ impl Input {
                 message: lines.to_string(),
             })
             .await
-            .context(WriteResultSnafu)?;
+            .context(WriteResultSnafu)
         } else {
             ctx.write_result(&SimpleMessage {
                 message: "No logs available.".to_string(),
             })
             .await
-            .context(WriteResultSnafu)?;
+            .context(WriteResultSnafu)
         }
-        Ok(())
     }
 }

@@ -1,8 +1,7 @@
-use crate::data::simple_message::SimpleMessage;
+use crate::{data::simple_message::SimpleMessage, httpclient};
 
 use super::Context;
 use crate::cli::sink::Error as SinkError;
-use crate::httpclient::Error as HttpError;
 
 use clap::{Parser, ValueHint};
 
@@ -20,11 +19,11 @@ pub struct Input {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("An http error occurred: {}", source))]
-    HttpClient { source: HttpError },
-
     #[snafu(display("Error writing data: {}", source))]
     WriteResult { source: SinkError },
+
+    #[snafu(display("Http error: {}", source))]
+    HttpClient { source: httpclient::Error },
 }
 
 impl Input {
@@ -33,12 +32,10 @@ impl Input {
             .stop_session(&self.job_id)
             .await
             .context(HttpClientSnafu)?;
-
         ctx.write_result(&SimpleMessage {
             message: "Job is being removed.".into(),
         })
         .await
-        .context(WriteResultSnafu)?;
-        Ok(())
+        .context(WriteResultSnafu)
     }
 }

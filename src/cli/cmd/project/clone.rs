@@ -67,10 +67,7 @@ impl Input {
     pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
         let opt_details = ctx
             .client
-            .get_project(
-                &self.project_ref,
-                ctx.opts.verbosity.log_level().unwrap_or(log::Level::Warn) > log::Level::Info,
-            )
+            .get_project(&self.project_ref)
             .await
             .context(HttpClientSnafu)?;
         if let Some(details) = opt_details {

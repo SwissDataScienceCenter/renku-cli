@@ -155,3 +155,47 @@ impl fmt::Display for ProjectDetails {
         )
     }
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RenkuError {
+    pub code: i32,
+    pub message: String,
+}
+
+impl fmt::Display for RenkuError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Error: {} - {}", self.code, self.message)
+    }
+}
+
+/// Error response can be either a concrete renku error, or an error
+/// from the proxy/gateway then there is only a message field.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ErrorResponse {
+    pub error: Option<RenkuError>,
+    pub message: Option<String>,
+}
+
+impl ErrorResponse {
+    pub fn code(&self) -> Option<i32> {
+        match &self.error {
+            Some(em) => Some(em.code),
+            None => None,
+        }
+    }
+}
+
+impl fmt::Display for ErrorResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.error {
+            Some(re) => write!(f, "{}", re),
+            None => {
+                if let Some(m) = &self.message {
+                    write!(f, "{}", m)
+                } else {
+                    write!(f, "No error message.")
+                }
+            }
+        }
+    }
+}

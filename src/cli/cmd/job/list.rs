@@ -1,6 +1,8 @@
 use super::Context;
-use crate::httpclient::Error as HttpError;
-use crate::{cli::sink::Error as SinkError, httpclient::data::SessionMode};
+use crate::{
+    cli::sink::Error as SinkError,
+    httpclient::{self, data::SessionMode},
+};
 
 use clap::Parser;
 
@@ -14,11 +16,11 @@ pub struct Input {}
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("An http error occurred: {}", source))]
-    HttpClient { source: HttpError },
-
     #[snafu(display("Error writing data: {}", source))]
     WriteResult { source: SinkError },
+
+    #[snafu(display("Http error: {}", source))]
+    HttpClient { source: httpclient::Error },
 }
 
 impl Input {
@@ -29,7 +31,6 @@ impl Input {
             .await
             .context(HttpClientSnafu)?;
 
-        ctx.write_result(&result).await.context(WriteResultSnafu)?;
-        Ok(())
+        ctx.write_result(&result).await.context(WriteResultSnafu)
     }
 }

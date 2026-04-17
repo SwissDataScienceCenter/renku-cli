@@ -1,8 +1,7 @@
-use crate::httpclient::data::SessionStartRequest;
+use crate::httpclient::{self, data::SessionStartRequest};
 
 use super::Context;
 use crate::cli::sink::Error as SinkError;
-use crate::httpclient::Error as HttpError;
 
 use clap::{Parser, ValueHint};
 use ulid::Ulid;
@@ -21,11 +20,11 @@ pub struct Input {
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    #[snafu(display("An http error occurred: {}", source))]
-    HttpClient { source: HttpError },
-
     #[snafu(display("Error writing data: {}", source))]
     WriteResult { source: SinkError },
+
+    #[snafu(display("Http error: {}", source))]
+    HttpClient { source: httpclient::Error },
 }
 
 impl Input {
@@ -36,11 +35,10 @@ impl Input {
         };
         let result = ctx
             .client
-            .start_session(req, true)
+            .start_session(req)
             .await
             .context(HttpClientSnafu)?;
 
-        ctx.write_result(&result).await.context(WriteResultSnafu)?;
-        Ok(())
+        ctx.write_result(&result).await.context(WriteResultSnafu)
     }
 }
