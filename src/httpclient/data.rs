@@ -4,6 +4,7 @@
 use iso8601_timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt};
+use tabled::{Table, Tabled, settings::Style};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionLogs(pub HashMap<String, String>);
@@ -11,7 +12,7 @@ pub struct SessionLogs(pub HashMap<String, String>);
 impl fmt::Display for SessionLogs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (k, v) in &self.0 {
-            write!(f, "- {}\n", k)?;
+            writeln!(f, "- {}", k)?;
             write!(f, "{}", v)?;
         }
         write!(f, "")
@@ -59,19 +60,17 @@ pub struct SessionList(pub Vec<SessionStartResponse>);
 
 impl fmt::Display for SessionList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let lines = self.0.iter().fold(String::new(), |a, b| {
-            format!("{}\n - {} (image={})", a, b.name, b.image)
-        });
-
         if self.0.is_empty() {
-            write!(f, "No sessions found.")
+            write!(f, "No jobs/sessions found.")
         } else {
-            write!(f, "Sessions:{}", lines)
+            let mut table = Table::new(&self.0);
+            table.with(Style::modern());
+            write!(f, "{}", table)
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Tabled)]
 pub struct SessionStartResponse {
     image: String,
     name: String,
@@ -81,11 +80,10 @@ pub struct SessionStartResponse {
 
 impl fmt::Display for SessionStartResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "SessionStartResponse({}, image={})",
-            self.name, self.image
-        )
+        let mut table = Table::new(vec![self]);
+        table.with(Style::modern());
+
+        write!(f, "{}", table)
     }
 }
 
@@ -178,10 +176,7 @@ pub struct ErrorResponse {
 
 impl ErrorResponse {
     pub fn code(&self) -> Option<i32> {
-        match &self.error {
-            Some(em) => Some(em.code),
-            None => None,
-        }
+        self.error.as_ref().map(|em| em.code)
     }
 }
 

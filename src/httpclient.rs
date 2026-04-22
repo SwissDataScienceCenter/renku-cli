@@ -16,7 +16,7 @@
 //!    None,
 //! ).unwrap();
 //! async {
-//!   println!("{:?}", client.version(false).await);
+//!   println!("{:?}", client.version().await);
 //! };
 //! ```
 //!
@@ -201,8 +201,8 @@ impl Client {
         } else {
             let err_resp = serde_json::from_str::<ErrorResponse>(&body).ok();
             Err(Error::BadResponse {
-                status: status,
-                body: body,
+                status,
+                body,
                 url: url.to_string(),
                 err_message: err_resp,
             })
@@ -229,7 +229,7 @@ impl Client {
         let url = self.make_url(path)?;
         let req = self
             .set_bearer_token(self.client.post(url.clone()))
-            .json::<I>(&body);
+            .json::<I>(body);
         self.run_request(req, url).await
     }
 
@@ -357,7 +357,7 @@ impl Client {
 
         let path = "/api/data/sessions";
         let details = self
-            .json_post::<SessionStartRequest, SessionStartResponse>(&path, &req)
+            .json_post::<SessionStartRequest, SessionStartResponse>(path, &req)
             .await?;
         Ok(details)
     }
@@ -369,7 +369,7 @@ impl Client {
         self.set_bearer_token(self.client.delete(url.clone()))
             .send()
             .await
-            .context(HttpSnafu { url: url })?;
+            .context(HttpSnafu { url })?;
         Ok(())
     }
 
@@ -387,7 +387,7 @@ impl Client {
 
         self.run_request::<Vec<SessionStartResponse>>(req, url)
             .await
-            .map(|e| SessionList(e))
+            .map(SessionList)
     }
 
     pub async fn session_logs(&self, session_id: &str) -> Result<SessionLogs, Error> {
