@@ -27,6 +27,7 @@ pub async fn execute_cmd(opts: MainOpts) -> Result<(), CmdError> {
         SubCommand::UserDoc(input) => input.exec(ctx).await?,
 
         SubCommand::Dataset(input) => input.exec(ctx).await?,
+        SubCommand::Job(input) => input.exec(ctx).await?,
     };
     Ok(())
 }

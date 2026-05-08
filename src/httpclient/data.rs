@@ -3,7 +3,89 @@
 
 use iso8601_timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{collections::HashMap, fmt};
+use tabled::{Table, Tabled, settings::Style};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionLogs(pub HashMap<String, String>);
+
+impl fmt::Display for SessionLogs {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (k, v) in &self.0 {
+            writeln!(f, "- {}", k)?;
+            write!(f, "{}", v)?;
+        }
+        write!(f, "")
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum SessionMode {
+    Interactive,
+    NonInteractive,
+}
+
+impl fmt::Display for SessionMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_query_param())
+    }
+}
+
+impl SessionMode {
+    pub fn to_query_param(&self) -> &str {
+        match self {
+            SessionMode::Interactive => "interactive",
+            SessionMode::NonInteractive => "non-interactive",
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionStartRequest {
+    pub launcher_id: String,
+    pub session_type: String,
+}
+impl fmt::Display for SessionStartRequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "SessionStart(launcher={}, session_type={})",
+            self.launcher_id, self.session_type
+        )
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionList(pub Vec<SessionStartResponse>);
+
+impl fmt::Display for SessionList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_empty() {
+            write!(f, "No jobs/sessions found.")
+        } else {
+            let mut table = Table::new(&self.0);
+            table.with(Style::modern());
+            write!(f, "{}", table)
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Tabled)]
+pub struct SessionStartResponse {
+    image: String,
+    name: String,
+    project_id: String,
+    launcher_id: String,
+}
+
+impl fmt::Display for SessionStartResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut table = Table::new(vec![self]);
+        table.with(Style::modern());
+
+        write!(f, "{}", table)
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Visibility {
@@ -69,5 +151,46 @@ impl fmt::Display for ProjectDetails {
             "Id: {}\nNamespace/Slug: {}/{}\nVisibility: {}\nCreated At: {}\nRepositories:{}",
             self.id, self.namespace, self.slug, self.visibility, self.creation_date, lines
         )
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RenkuError {
+    pub code: i32,
+    pub message: String,
+}
+
+impl fmt::Display for RenkuError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Error: {} - {}", self.code, self.message)
+    }
+}
+
+/// Error response can be either a concrete renku error, or an error
+/// from the proxy/gateway then there is only a message field.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ErrorResponse {
+    pub error: Option<RenkuError>,
+    pub message: Option<String>,
+}
+
+impl ErrorResponse {
+    pub fn code(&self) -> Option<i32> {
+        self.error.as_ref().map(|em| em.code)
+    }
+}
+
+impl fmt::Display for ErrorResponse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.error {
+            Some(re) => write!(f, "{}", re),
+            None => {
+                if let Some(m) = &self.message {
+                    write!(f, "{}", m)
+                } else {
+                    write!(f, "No error message.")
+                }
+            }
+        }
     }
 }

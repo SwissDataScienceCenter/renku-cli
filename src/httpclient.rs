@@ -16,7 +16,7 @@
 //!    None,
 //! ).unwrap();
 //! async {
-//!   println!("{:?}", client.version(false).await);
+//!   println!("{:?}", client.version().await);
 //! };
 //! ```
 //!
@@ -37,17 +37,39 @@ use auth::{Response, UserCode};
 use openidconnect::OAuth2TokenResponse;
 use regex::Regex;
 use reqwest::{Certificate, ClientBuilder, IntoUrl, RequestBuilder, Url};
-use serde::de::DeserializeOwned;
+use serde::{Serialize, de::DeserializeOwned};
 use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
 
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+
+fn display_bad_response(em: &Option<ErrorResponse>, body: &String) -> String {
+    match em {
+        Some(s) => match &s.error {
+            Some(em) => em.message.to_owned(),
+            None => s.message.to_owned().unwrap_or(body.to_owned()),
+        },
+        None => body.to_owned(),
+    }
+}
 
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum Error {
     #[snafu(display("An error was received from {}: {}", url, source))]
     Http { source: reqwest::Error, url: String },
+
+    #[snafu(display(
+        "Response not successful: {} - {}",
+        status,
+        display_bad_response(err_message, body)
+    ))]
+    BadResponse {
+        status: reqwest::StatusCode,
+        body: String,
+        url: String,
+        err_message: Option<ErrorResponse>,
+    },
 
     #[snafu(display("An error occurred creating the http client: {}", source))]
     ClientCreate { source: reqwest::Error },
@@ -163,24 +185,27 @@ impl Client {
         }
     }
 
-    /// Runs a GET request to the given url. When `debug` is true, the
-    /// response is first decoded into utf8 chars and logged at debug
-    /// level. Otherwise bytes are directly decoded from JSON into the
-    /// expected structure.
-    async fn json_get<R: DeserializeOwned>(&self, path: &str, debug: bool) -> Result<R, Error> {
-        let url = self.make_url(path)?;
-        log::debug!("JSON GET: {}", url);
-        let resp = self
-            .set_bearer_token(self.client.get(url.clone()))
-            .send()
-            .await
-            .context(HttpSnafu { url: url.clone() })?;
-        if debug {
-            let body = resp.text().await.context(DeserializeRespSnafu)?;
-            log::debug!("GET {} -> {}", url, body);
+    async fn run_request<R: DeserializeOwned>(
+        &self,
+        req: RequestBuilder,
+        url: Url,
+    ) -> Result<R, Error> {
+        log::debug!("Run request: {}", url);
+        let resp = req.send().await.context(HttpSnafu { url: url.clone() })?;
+
+        let status = resp.status();
+        let body = resp.text().await.context(DeserializeRespSnafu)?;
+        log::debug!("Response: {} -> {}", url, body);
+        if status.is_success() {
             serde_json::from_str::<R>(&body).context(DeserializeJsonSnafu)
         } else {
-            resp.json::<R>().await.context(DeserializeRespSnafu)
+            let err_resp = serde_json::from_str::<ErrorResponse>(&body).ok();
+            Err(Error::BadResponse {
+                status,
+                body,
+                url: url.to_string(),
+                err_message: err_resp,
+            })
         }
     }
 
@@ -188,59 +213,71 @@ impl Client {
     /// response is first decoded into utf8 chars and logged at debug
     /// level. Otherwise bytes are directly decoded from JSON into the
     /// expected structure.
-    async fn json_get_option<R: DeserializeOwned>(
+    async fn json_get<R: DeserializeOwned>(&self, path: &str) -> Result<R, Error> {
+        let url = self.make_url(path)?;
+        log::debug!("JSON GET: {}", url);
+        let req = self.set_bearer_token(self.client.get(url.clone()));
+        self.run_request(req, url).await
+    }
+
+    /// Runs a POST request to the given url.
+    async fn json_post<I: Serialize, R: DeserializeOwned>(
         &self,
         path: &str,
-        debug: bool,
-    ) -> Result<Option<R>, Error> {
+        body: &I,
+    ) -> Result<R, Error> {
         let url = self.make_url(path)?;
-        let resp = self
-            .set_bearer_token(self.client.get(url.clone()))
-            .send()
-            .await
-            .context(HttpSnafu { url: url.clone() })?;
+        let req = self
+            .set_bearer_token(self.client.post(url.clone()))
+            .json::<I>(body);
+        self.run_request(req, url).await
+    }
 
-        if debug {
-            if resp.status() == reqwest::StatusCode::NOT_FOUND {
-                log::debug!("GET {} -> NotFound", &url);
-                Ok(None)
-            } else {
-                let body = &resp.text().await.context(DeserializeRespSnafu)?;
-                log::debug!("GET {} -> {}", &url, body);
-                let r = serde_json::from_str::<R>(body).context(DeserializeJsonSnafu)?;
-                Ok(Some(r))
+    /// Runs a GET request to the given url. When `debug` is true, the
+    /// response is first decoded into utf8 chars and logged at debug
+    /// level. Otherwise bytes are directly decoded from JSON into the
+    /// expected structure.
+    async fn json_get_option<R: DeserializeOwned>(&self, path: &str) -> Result<Option<R>, Error> {
+        let url = self.make_url(path)?;
+        let req = self.set_bearer_token(self.client.get(url.clone()));
+
+        let result = self.run_request(req, url).await;
+        match result {
+            Err(Error::BadResponse {
+                status,
+                body: _,
+                url: _,
+                err_message: _,
+            }) => {
+                if status == reqwest::StatusCode::NOT_FOUND {
+                    Ok(None)
+                } else {
+                    result
+                }
             }
-        } else if resp.status() == reqwest::StatusCode::NOT_FOUND {
-            Ok(None)
-        } else {
-            let r = resp.json::<R>().await.context(DeserializeRespSnafu)?;
-            Ok(Some(r))
+            _ => result,
         }
     }
 
     /// Queries Renku for its version
-    pub async fn version(&self, debug: bool) -> Result<VersionInfo, Error> {
+    pub async fn version(&self) -> Result<VersionInfo, Error> {
         let data = self
-            .json_get::<SimpleVersion>("/ui-server/api/data/version", debug)
+            .json_get::<SimpleVersion>("/ui-server/api/data/version")
             .await?;
         let search = self
-            .json_get::<SearchServiceVersion>("/ui-server/api/search/version", debug)
+            .json_get::<SearchServiceVersion>("/ui-server/api/search/version")
             .await?;
         Ok(VersionInfo { search, data })
     }
 
-    pub async fn get_project(
-        &self,
-        id: &ProjectId,
-        debug: bool,
-    ) -> Result<Option<ProjectDetails>, Error> {
+    pub async fn get_project(&self, id: &ProjectId) -> Result<Option<ProjectDetails>, Error> {
         match id {
             ProjectId::NamespaceSlug { namespace, slug } => {
-                self.get_project_by_slug(namespace, slug, debug).await
+                self.get_project_by_slug(namespace, slug).await
             }
-            ProjectId::Id(pid) => self.get_project_by_id(pid, debug).await,
+            ProjectId::Id(pid) => self.get_project_by_id(pid).await,
 
-            ProjectId::FullUrl(url) => self.get_project_by_url(url.as_url().clone(), debug).await,
+            ProjectId::FullUrl(url) => self.get_project_by_url(url.as_url().clone()).await,
         }
     }
 
@@ -249,30 +286,24 @@ impl Client {
         &self,
         namespace: &str,
         slug: &str,
-        debug: bool,
     ) -> Result<Option<ProjectDetails>, Error> {
         log::debug!("Get project by namespace/slug: {}/{}", namespace, slug);
         let path = format!("/api/data/namespaces/{}/projects/{}", namespace, slug);
-        let details = self.json_get_option::<ProjectDetails>(&path, debug).await?;
+        let details = self.json_get_option::<ProjectDetails>(&path).await?;
         Ok(details)
     }
 
     /// Get project details by project id.
-    pub async fn get_project_by_id(
-        &self,
-        id: &str,
-        debug: bool,
-    ) -> Result<Option<ProjectDetails>, Error> {
+    pub async fn get_project_by_id(&self, id: &str) -> Result<Option<ProjectDetails>, Error> {
         log::debug!("Get project by id: {}", id);
         let path = format!("/api/data/projects/{}", id);
-        let details = self.json_get_option::<ProjectDetails>(&path, debug).await?;
+        let details = self.json_get_option::<ProjectDetails>(&path).await?;
         Ok(details)
     }
 
     pub async fn get_project_by_url<U: IntoUrl>(
         &self,
         url: U,
-        debug: bool,
     ) -> Result<Option<ProjectDetails>, Error> {
         let urlstr = url.as_str().to_string();
         let url = url.into_url().context(HttpSnafu { url: urlstr })?;
@@ -314,10 +345,55 @@ impl Client {
             self.access_token.clone(),
         )?;
 
-        let details = client
-            .json_get_option::<ProjectDetails>(&path, debug)
+        let details = client.json_get_option::<ProjectDetails>(&path).await?;
+        Ok(details)
+    }
+
+    pub async fn start_session(
+        &self,
+        req: SessionStartRequest,
+    ) -> Result<SessionStartResponse, Error> {
+        log::debug!("Starting session: {}", req);
+
+        let path = "/api/data/sessions";
+        let details = self
+            .json_post::<SessionStartRequest, SessionStartResponse>(path, &req)
             .await?;
         Ok(details)
+    }
+
+    pub async fn stop_session(&self, session_id: &str) -> Result<(), Error> {
+        log::debug!("Stop session: {}", session_id);
+        let path = format!("/api/data/sessions/{}", session_id);
+        let url = self.make_url(&path)?;
+        self.set_bearer_token(self.client.delete(url.clone()))
+            .send()
+            .await
+            .context(HttpSnafu { url })?;
+        Ok(())
+    }
+
+    pub async fn list_sessions(&self, mode: Option<SessionMode>) -> Result<SessionList, Error> {
+        let url = self.make_url("/api/data/sessions")?;
+        log::debug!(
+            "List sessions: {}?session_mode={}",
+            url,
+            mode.as_ref().map_or("", |e| e.to_query_param())
+        );
+        let mut req = self.set_bearer_token(self.client.get(url.clone()));
+        if let Some(m) = mode {
+            req = req.query(&[("session_type", m.to_query_param())])
+        }
+
+        self.run_request::<Vec<SessionStartResponse>>(req, url)
+            .await
+            .map(SessionList)
+    }
+
+    pub async fn session_logs(&self, session_id: &str) -> Result<SessionLogs, Error> {
+        let path = format!("/api/data/sessions/{}/logs", session_id);
+        let result = self.json_get::<SessionLogs>(&path).await?;
+        Ok(result)
     }
 
     pub async fn start_login_flow(&self) -> Result<UserCode, Error> {
