@@ -1,4 +1,7 @@
-use crate::httpclient::{self, data::SessionStartRequest};
+use crate::{
+    data::submission_id::SubmissionId,
+    httpclient::{self, data::SessionStartRequest},
+};
 
 use super::Context;
 use crate::cli::sink::Error as SinkError;
@@ -16,6 +19,10 @@ pub struct Input {
     /// The launcher to use for launching the job.
     #[arg(value_hint=ValueHint::Other)]
     pub launcher: Ulid,
+
+    /// A submission id allows to deduplicate same job submissions. If missing, a random one is generated.
+    #[arg(long)]
+    pub submission_id: Option<SubmissionId>,
 }
 
 #[derive(Debug, Snafu)]
@@ -29,9 +36,14 @@ pub enum Error {
 
 impl Input {
     pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
+        let submission_id = self
+            .submission_id
+            .clone()
+            .unwrap_or_else(|| SubmissionId::random());
         let req = SessionStartRequest {
             launcher_id: self.launcher.to_string(),
             session_type: "non-interactive".into(),
+            submission_id: Some(submission_id),
         };
         let result = ctx
             .client

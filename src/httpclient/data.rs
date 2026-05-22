@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt};
 use tabled::{Table, Tabled, settings::Style};
 
+use crate::data::submission_id::SubmissionId;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionLogs(pub HashMap<String, String>);
 
@@ -44,13 +46,14 @@ impl SessionMode {
 pub struct SessionStartRequest {
     pub launcher_id: String,
     pub session_type: String,
+    pub submission_id: Option<SubmissionId>,
 }
 impl fmt::Display for SessionStartRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SessionStart(launcher={}, session_type={})",
-            self.launcher_id, self.session_type
+            "SessionStart(launcher={}, session_type={}, submission_id={:?})",
+            self.launcher_id, self.session_type, self.submission_id
         )
     }
 }
