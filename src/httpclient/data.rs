@@ -1,12 +1,15 @@
 //! Defines data structures for requests and responses and their
 //! `De/Serialize` instances.
 
+use crate::data::submission_id::SubmissionId;
 use iso8601_timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt};
-use tabled::{Table, Tabled, settings::Style};
-
-use crate::data::submission_id::SubmissionId;
+use std::{borrow::Borrow, collections::HashMap, fmt};
+use tabled::{
+    Table,
+    builder::Builder,
+    settings::{Settings, Style},
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionLogs(pub HashMap<String, String>);
@@ -61,31 +64,81 @@ impl fmt::Display for SessionStartRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionList(pub Vec<SessionStartResponse>);
 
+fn create_session_table<I, T>(data: I) -> Table
+where
+    I: IntoIterator<Item = T>,
+    T: Borrow<SessionStartResponse>,
+{
+    let mut builder = Builder::default();
+    for e in data {
+        let r = e.borrow();
+        let sub_id = match &r.submission_id {
+            Some(n) => n,
+            None => "-",
+        };
+        let started = r.started.format();
+        let data = vec![
+            &r.name,
+            sub_id,
+            &r.project_id,
+            &r.status.state,
+            &started,
+            &r.launcher_id,
+            &r.image,
+        ];
+        builder.push_record(data);
+    }
+    builder.insert_record(
+        0,
+        vec![
+            "Job",
+            "Submission Id",
+            "Project Id",
+            "Status",
+            "Started",
+            "Launcher Id",
+            "Image",
+        ],
+    );
+
+    let mut table = builder.build();
+    let settings = Settings::default().with(Style::sharp());
+
+    table.with(settings);
+    table
+}
+
 impl fmt::Display for SessionList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.0.is_empty() {
             write!(f, "No jobs/sessions found.")
         } else {
-            let mut table = Table::new(&self.0);
-            table.with(Style::modern());
+            let table = create_session_table(&self.0);
             write!(f, "{}", table)
         }
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Tabled)]
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionStatus {
+    message: Option<String>,
+    state: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SessionStartResponse {
     image: String,
     name: String,
     project_id: String,
     launcher_id: String,
+    submission_id: Option<String>,
+    status: SessionStatus,
+    started: Timestamp,
 }
 
 impl fmt::Display for SessionStartResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut table = Table::new(vec![self]);
-        table.with(Style::modern());
-
+        let table = create_session_table(vec![self]);
         write!(f, "{}", table)
     }
 }
