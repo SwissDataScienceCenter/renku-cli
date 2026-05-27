@@ -50,13 +50,14 @@ pub struct SessionStartRequest {
     pub launcher_id: String,
     pub session_type: String,
     pub submission_id: Option<SubmissionId>,
+    pub job_args_override: Vec<String>,
 }
 impl fmt::Display for SessionStartRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SessionStart(launcher={}, session_type={}, submission_id={:?})",
-            self.launcher_id, self.session_type, self.submission_id
+            "SessionStart(launcher={}, session_type={}, submission_id={:?}, job_args_overrides={:?})",
+            self.launcher_id, self.session_type, self.submission_id, self.job_args_override
         )
     }
 }
@@ -77,28 +78,12 @@ where
             None => "-",
         };
         let started = r.started.format();
-        let data = vec![
-            &r.name,
-            sub_id,
-            &r.project_id,
-            &r.status.state,
-            &started,
-            &r.launcher_id,
-            &r.image,
-        ];
+        let data = vec![&r.name, sub_id, &r.project_id, &r.status.state, &started];
         builder.push_record(data);
     }
     builder.insert_record(
         0,
-        vec![
-            "Job",
-            "Submission Id",
-            "Project Id",
-            "Status",
-            "Started",
-            "Launcher Id",
-            "Image",
-        ],
+        vec!["Job", "Submission Id", "Project Id", "Status", "Started"],
     );
 
     let mut table = builder.build();

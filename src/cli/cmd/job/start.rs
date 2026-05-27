@@ -23,6 +23,10 @@ pub struct Input {
     /// A submission id allows to deduplicate same job submissions. If missing, a random one is generated.
     #[arg(long)]
     pub submission_id: Option<SubmissionId>,
+
+    /// These arguments are passed to the renku job command.
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0.., value_name = "ARGS")]
+    pub passthrough: Vec<String>,
 }
 
 #[derive(Debug, Snafu)]
@@ -44,6 +48,7 @@ impl Input {
             launcher_id: self.launcher.to_string(),
             session_type: "non-interactive".into(),
             submission_id: Some(submission_id),
+            job_args_override: self.passthrough.clone(),
         };
         let result = ctx
             .client
