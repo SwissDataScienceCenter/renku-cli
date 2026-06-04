@@ -1,5 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
+use regex_macro::regex;
 use serde::{Deserialize, Serialize};
 
 use crate::util;
@@ -10,10 +11,10 @@ pub struct SubmissionId(String);
 impl SubmissionId {
     pub fn parse<S: AsRef<str>>(input: S) -> Result<SubmissionId, SubmissionIdError> {
         let s = input.as_ref();
-        if s.len() < 4 {
-            Err(SubmissionIdError::InvalidInput(s.to_string()))
-        } else {
+        if regex!("^[a-z][-0-9a-z]{3,19}$").is_match(s) {
             Ok(SubmissionId(s.into()))
+        } else {
+            Err(SubmissionIdError::InvalidInput(s.to_string()))
         }
     }
 
@@ -28,8 +29,9 @@ impl SubmissionId {
     }
 
     pub fn random() -> SubmissionId {
+        let first = util::strings::random(1, "abcdefghijklmnopqrstuvwxyz");
         let s = util::strings::random_alpha_num(8);
-        SubmissionId(s)
+        SubmissionId(format!("{}{}", first, s))
     }
 }
 
@@ -80,3 +82,15 @@ impl Display for SubmissionIdError {
     }
 }
 impl std::error::Error for SubmissionIdError {}
+
+#[test]
+fn submission_id_parse() {
+    assert!(SubmissionId::parse("__-").is_err());
+    assert!(SubmissionId::parse("9abcd").is_err());
+    assert!(SubmissionId::parse("abc-9ed").is_ok());
+    assert_eq!(
+        SubmissionId::parse("ab-cd-de").unwrap().as_str(),
+        "ab-cd-de"
+    );
+    assert!(SubmissionId::random().as_str().len() > 4);
+}

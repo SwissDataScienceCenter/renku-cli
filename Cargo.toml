@@ -36,6 +36,7 @@ tabled = "0.20.0"
 chrono = "0.4.43"
 futures = { version = "0.3" }
 regex = { version = "1.12.3" }
+regex-macro = { version = "0.3.0" }
 iso8601-timestamp = { version = "0.2.17" }
 toml = { version = "0.8.19" }
 git2 = { version = "0.19.0", default-features = false, features = [
