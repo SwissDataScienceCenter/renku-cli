@@ -1,4 +1,5 @@
 pub mod cmd;
+pub mod complete;
 pub mod opts;
 pub mod sink;
 

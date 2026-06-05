@@ -406,4 +406,10 @@ impl Client {
         cache::write_auth_token(&r).await?;
         Ok(r)
     }
+
+    pub async fn list_launchers(&self) -> Result<Vec<SessionLauncher>, Error> {
+        let path = "/api/data/session_launchers";
+        let result = self.json_get::<Vec<SessionLauncher>>(path).await?;
+        Ok(result)
+    }
 }

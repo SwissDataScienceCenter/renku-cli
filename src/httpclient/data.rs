@@ -12,6 +12,18 @@ use tabled::{
 };
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct SessionLauncher {
+    pub id: String,
+    pub project_id: String,
+    pub name: String,
+}
+impl fmt::Display for SessionLauncher {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} ({})", self.name, self.id)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SessionLogs(pub HashMap<String, String>);
 
 impl fmt::Display for SessionLogs {

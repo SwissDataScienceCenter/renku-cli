@@ -12,7 +12,9 @@ async fn main() -> EyreResult<()> {
 }
 
 async fn execute() -> Result<()> {
-    CompleteEnv::with_factory(MainOpts::command).complete();
+    CompleteEnv::with_factory(MainOpts::command)
+
+        .complete();
     let opts = rnk::read_args();
     env_logger::Builder::new()
         .filter_level(opts.common_opts.verbosity.log_level_filter())
