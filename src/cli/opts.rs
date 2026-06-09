@@ -1,5 +1,8 @@
 use crate::{
-    data::renku_url::RenkuUrl,
+    data::{
+        project_id::{ProjectId, ProjectIdParseError},
+        renku_url::RenkuUrl,
+    },
     httpclient::{Client, Error as ClientError, proxy},
 };
 
@@ -30,6 +33,13 @@ pub struct CommonOpts {
     /// variable RENKU_CLI_RENKU_URL.
     #[arg(long, value_hint = ValueHint::Url)]
     pub renku_url: Option<RenkuUrl>,
+
+    /// Some commands may operate within a project. If this option is
+    /// set, or the environment variable RENKU_CLI_PROJECT_CONTEXT is
+    /// present and specifies a project id, some commands use it to
+    /// confine there functionality to this project.
+    #[arg(long, value_hint = ValueHint::Url)]
+    pub project_context: Option<ProjectId>,
 
     /// Set a proxy to use for doing http requests. By default, the
     /// system proxy will be used. Can be either `none` or <url>. If
@@ -93,6 +103,18 @@ impl CommonOpts {
                     Ok(RenkuUrl::renkulab_io())
                 }
             },
+        }
+    }
+
+    #[allow(dead_code)]
+    fn get_project_context(&self) -> Result<Option<ProjectId>, ProjectIdParseError> {
+        if self.project_context.is_some() {
+            return Ok(self.project_context.clone());
+        } else {
+            match std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok() {
+                Some(id) => ProjectId::parse(&id).map(|e| Some(e)),
+                None => Ok(None),
+            }
         }
     }
 }
