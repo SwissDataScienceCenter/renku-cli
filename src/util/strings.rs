@@ -1,7 +1,7 @@
 use rand::Rng;
 
 const CHARSET_ALPHA_NUM: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
+const CHARSET_LOWER_ALPHA_NUM: &str = "abcdefghijklmnopqrstuvwxyz0123456789";
 const CHARSET_ALPHA: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 pub fn random(length: usize, charset: &str) -> String {
@@ -14,6 +14,10 @@ pub fn random(length: usize, charset: &str) -> String {
 
 pub fn random_alpha_num(length: usize) -> String {
     random(length, CHARSET_ALPHA_NUM)
+}
+
+pub fn random_lower_alpha_num(length: usize) -> String {
+    random(length, CHARSET_LOWER_ALPHA_NUM)
 }
 
 pub fn random_alpha(length: usize) -> String {

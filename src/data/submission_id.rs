@@ -30,7 +30,7 @@ impl SubmissionId {
 
     pub fn random() -> SubmissionId {
         let first = util::strings::random(1, "abcdefghijklmnopqrstuvwxyz");
-        let s = util::strings::random_alpha_num(8);
+        let s = util::strings::random_lower_alpha_num(8);
         SubmissionId(format!("{}{}", first, s))
     }
 }
@@ -87,6 +87,7 @@ impl std::error::Error for SubmissionIdError {}
 fn submission_id_parse() {
     assert!(SubmissionId::parse("__-").is_err());
     assert!(SubmissionId::parse("9abcd").is_err());
+    assert!(SubmissionId::parse("aBCDEFg").is_err());
     assert!(SubmissionId::parse("abc-9ed").is_ok());
     assert_eq!(
         SubmissionId::parse("ab-cd-de").unwrap().as_str(),

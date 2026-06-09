@@ -1,8 +1,11 @@
 use std::ffi;
 
-use crate::{cli::opts::MainOpts, httpclient::Client};
+use crate::{
+    cli::opts::MainOpts,
+    httpclient::{Client, data::SessionLauncher},
+};
 
-use clap::Parser;
+use clap::{Parser, builder::StyledStr};
 use clap_complete::CompletionCandidate;
 use futures::executor::block_on;
 
@@ -66,6 +69,24 @@ where
     first_it.chain(remain).chain(version)
 }
 
+async fn make_launcher_completion_candidate(
+    client: &Client,
+    launcher: &SessionLauncher,
+) -> CompletionCandidate {
+    let mut help = StyledStr::new();
+    help.push_str(&launcher.name);
+    let cc = CompletionCandidate::new(launcher.id.clone());
+
+    let Ok(Some(project)) = client.get_project_by_id(&launcher.project_id).await else {
+        return cc.help(Some(help));
+    };
+
+    help.push_str(" - ");
+    help.push_str(&project.name);
+
+    cc.help(Some(help.into()))
+}
+
 /// Complete a session launcher id
 #[allow(dead_code, unused_mut, unused_variables, unreachable_code)]
 pub fn complete_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
@@ -74,21 +95,11 @@ pub fn complete_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
             panic!("error getting launchers");
             return vec![];
         };
-        launchers
-            .iter()
-            .map(|l| CompletionCandidate::new(l.id.clone()))
-            .collect()
+        let mut result: Vec<CompletionCandidate> = vec![];
+        for launcher in launchers {
+            let cc = make_launcher_completion_candidate(&client, &launcher).await;
+            result.push(cc);
+        }
+        return result;
     })
-    // panic!("opts: {:?}", opts);
-
-    // let mut ulid = Ulid::from_string(&format!("test:{}", args.len())).unwrap();
-    // // if copts.is_err() {
-    // //     ulid = Ulid::from_string(&format!("help:{}", args.len())).unwrap()
-    // // }
-
-    // // let matches = MainOpts::command().get_matches();
-    // // let rurl = matches.get_one::<RenkuUrl>("--renku-url");
-    // // println!(">>>>> url: {:?}", rurl);
-    // completions.push(CompletionCandidate::new(ulid.to_string()));
-    // completions
 }
