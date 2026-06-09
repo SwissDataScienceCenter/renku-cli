@@ -2,7 +2,10 @@ use std::ffi;
 
 use crate::{
     cli::opts::MainOpts,
-    httpclient::{Client, data::SessionLauncher},
+    httpclient::{
+        Client,
+        data::{SessionLauncher, SessionMode},
+    },
 };
 
 use clap::{Parser, builder::StyledStr};
@@ -89,14 +92,17 @@ async fn make_launcher_completion_candidate(
 
 /// Complete a session launcher id
 #[allow(dead_code, unused_mut, unused_variables, unreachable_code)]
-pub fn complete_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
+pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
     make_sync_completer2(current, async |client| {
         let Ok(launchers) = client.list_launchers().await else {
             panic!("error getting launchers");
             return vec![];
         };
         let mut result: Vec<CompletionCandidate> = vec![];
-        for launcher in launchers {
+        for launcher in launchers
+            .iter()
+            .filter(|e| e.launcher_type == SessionMode::NonInteractive)
+        {
             let cc = make_launcher_completion_candidate(&client, &launcher).await;
             result.push(cc);
         }

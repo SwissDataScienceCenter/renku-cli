@@ -16,6 +16,7 @@ pub struct SessionLauncher {
     pub id: String,
     pub project_id: String,
     pub name: String,
+    pub launcher_type: SessionMode,
 }
 impl fmt::Display for SessionLauncher {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -36,9 +37,11 @@ impl fmt::Display for SessionLogs {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum SessionMode {
+    #[serde(rename = "interactive")]
     Interactive,
+    #[serde(rename = "non-interactive")]
     NonInteractive,
 }
 
