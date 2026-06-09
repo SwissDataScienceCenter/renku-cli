@@ -62,14 +62,19 @@ pub struct SessionStartRequest {
     pub launcher_id: String,
     pub session_type: String,
     pub submission_id: Option<SubmissionId>,
-    pub job_args_override: Vec<String>,
+    pub job_args_override: Option<Vec<String>>,
+    pub job_command_override: Option<Vec<String>>,
 }
 impl fmt::Display for SessionStartRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SessionStart(launcher={}, session_type={}, submission_id={:?}, job_args_overrides={:?})",
-            self.launcher_id, self.session_type, self.submission_id, self.job_args_override
+            "SessionStart(launcher={}, session_type={}, submission_id={:?}, job_args_overrides={:?}, command={:?})",
+            self.launcher_id,
+            self.session_type,
+            self.submission_id,
+            self.job_args_override,
+            self.job_command_override
         )
     }
 }

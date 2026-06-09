@@ -26,50 +26,14 @@ pub struct Input {
     #[arg(long)]
     pub submission_id: Option<SubmissionId>,
 
+    /// Overwrite the command that is set in the launcher.
+    #[arg(long)]
+    pub command: Vec<String>,
+
     /// These arguments are passed to the renku job command.
     #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0.., value_name = "ARGS")]
     pub passthrough: Vec<String>,
 }
-
-// #[allow(dead_code, unused_mut, unused_variables, unreachable_code)]
-// fn complete_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
-//     let mut completions = vec![];
-//     let Some(_current) = current.to_str() else {
-//         return completions;
-//     };
-
-//     let mut args = std::env::args()
-//         .take_while(|e| !e.eq_ignore_ascii_case("job"))
-//         .skip(2)
-//         .collect::<Vec<String>>();
-//     args.push("version".into());
-//     let Ok(opts) = MainOpts::try_parse_from(args) else {
-//         return completions;
-//     };
-
-//     let Ok(client) = opts.common_opts.create_client(None) else {
-//         return completions;
-//     };
-
-//     // let args2 = args.take_while(|e| !e.eq_ignore_ascii_case("job")).skip(3);
-//     // let args3: Vec<String> = args2.collect();
-
-//     // let mut def_opts = CommonOpts::empty();
-//     // def_opts.try_update_from(args2).unwrap();
-
-//     panic!("opts: {:?}", opts);
-
-//     let mut ulid = Ulid::from_string(&format!("test:{}", args.len())).unwrap();
-//     // if copts.is_err() {
-//     //     ulid = Ulid::from_string(&format!("help:{}", args.len())).unwrap()
-//     // }
-
-//     // let matches = MainOpts::command().get_matches();
-//     // let rurl = matches.get_one::<RenkuUrl>("--renku-url");
-//     // println!(">>>>> url: {:?}", rurl);
-//     completions.push(CompletionCandidate::new(ulid.to_string()));
-//     completions
-// }
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -86,11 +50,22 @@ impl Input {
             .submission_id
             .clone()
             .unwrap_or_else(|| SubmissionId::random());
+        let cmd = if self.command.is_empty() {
+            None
+        } else {
+            Some(self.command.clone())
+        };
+        let args = if self.passthrough.is_empty() {
+            None
+        } else {
+            Some(self.passthrough.clone())
+        };
         let req = SessionStartRequest {
             launcher_id: self.launcher.to_string(),
             session_type: "non-interactive".into(),
             submission_id: Some(submission_id),
-            job_args_override: self.passthrough.clone(),
+            job_args_override: args,
+            job_command_override: cmd,
         };
         let result = ctx
             .client
