@@ -2,6 +2,7 @@ use std::{ffi, thread};
 
 use crate::{
     cli::opts::MainOpts,
+    data::project_id::ProjectId,
     httpclient::{
         Client,
         data::{SessionLauncher, SessionMode},
@@ -106,18 +107,29 @@ async fn make_launcher_completion_candidate(
     cc.help(Some(help.into()))
 }
 
+async fn resolve_project_id(client: &Client, id: ProjectId) -> Option<String> {
+    client.get_project(&id).await.ok().flatten().map(|p| p.id)
+}
+
 /// Complete a session launcher id
-#[allow(dead_code, unused_mut, unused_variables, unreachable_code)]
 pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
-    make_sync_completer2(current, async |client, _opts| {
+    make_sync_completer2(current, async |client, opts| {
         let Ok(launchers) = client.list_launchers().await else {
-            panic!("error getting launchers");
             return vec![];
         };
         let mut result: Vec<CompletionCandidate> = vec![];
+        let project_ctx = opts.get_project_context().ok().flatten();
+        let project_id = match project_ctx {
+            Some(id) => resolve_project_id(&client, id).await,
+            None => None,
+        };
         for launcher in launchers
             .iter()
             .filter(|e| e.launcher_type == SessionMode::NonInteractive)
+            .filter(|e| match &project_id {
+                Some(id) => id == &e.project_id,
+                None => true,
+            })
         {
             let cc = make_launcher_completion_candidate(&client, &launcher).await;
             result.push(cc);

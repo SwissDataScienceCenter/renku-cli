@@ -106,8 +106,7 @@ impl CommonOpts {
         }
     }
 
-    #[allow(dead_code)]
-    fn get_project_context(&self) -> Result<Option<ProjectId>, ProjectIdParseError> {
+    pub fn get_project_context(&self) -> Result<Option<ProjectId>, ProjectIdParseError> {
         if self.project_context.is_some() {
             return Ok(self.project_context.clone());
         } else {

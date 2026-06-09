@@ -189,6 +189,19 @@ pub struct VersionInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct NamespaceDetails {
+    pub id: String,
+    pub name: String,
+    pub slug: String,
+    pub path: String,
+}
+impl fmt::Display for NamespaceDetails {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Namespace: {} ({})", self.path, self.id)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ProjectDetails {
     pub id: String,
     pub name: String,
