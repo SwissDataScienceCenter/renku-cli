@@ -1,4 +1,4 @@
-use std::ffi;
+use std::{ffi, thread};
 
 use crate::{
     cli::opts::MainOpts,
@@ -11,6 +11,9 @@ use crate::{
 use clap::{Parser, builder::StyledStr};
 use clap_complete::CompletionCandidate;
 use futures::executor::block_on;
+use tokio::sync::mpsc;
+
+use super::opts::CommonOpts;
 
 pub fn make_sync_completer<F, Fut>(func: F) -> impl Fn(&ffi::OsStr) -> Vec<CompletionCandidate>
 where
@@ -37,8 +40,8 @@ where
 
 pub fn make_sync_completer2<F, Fut>(current: &ffi::OsStr, func: F) -> Vec<CompletionCandidate>
 where
-    F: Fn(Client) -> Fut + Clone + 'static,
-    Fut: Future<Output = Vec<CompletionCandidate>> + 'static,
+    F: Fn(Client, CommonOpts) -> Fut + Clone + Send + 'static,
+    Fut: Future<Output = Vec<CompletionCandidate>> + Send + 'static,
 {
     let Some(_current) = current.to_str() else {
         return vec![];
@@ -53,7 +56,20 @@ where
         return vec![];
     };
 
-    block_on(func(client))
+    let (send, mut recv) = mpsc::unbounded_channel();
+    tokio::spawn(async move {
+        let result = func(client, opts.common_opts).await;
+        send.send(result).unwrap();
+    });
+
+    let sync_recv = thread::spawn(move || {
+        let mut completions = vec![];
+        while let Some(candidate) = recv.blocking_recv() {
+            completions.extend(candidate);
+        }
+        completions
+    });
+    sync_recv.join().unwrap()
 }
 
 /// Returns the part of the arguments that make up CommonOpts
@@ -93,7 +109,7 @@ async fn make_launcher_completion_candidate(
 /// Complete a session launcher id
 #[allow(dead_code, unused_mut, unused_variables, unreachable_code)]
 pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
-    make_sync_completer2(current, async |client| {
+    make_sync_completer2(current, async |client, _opts| {
         let Ok(launchers) = client.list_launchers().await else {
             panic!("error getting launchers");
             return vec![];
