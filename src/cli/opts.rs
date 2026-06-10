@@ -36,8 +36,9 @@ pub struct CommonOpts {
 
     /// Some commands may operate within a project. If this option is
     /// set, or the environment variable RENKU_CLI_PROJECT_CONTEXT is
-    /// present and specifies a project id, some commands use it to
-    /// confine there functionality to this project.
+    /// present commands can use it to confine there functionality to
+    /// this project. The value may be the project id (ulid) or the
+    /// path like <username>/<project-name>.
     #[arg(long, value_hint = ValueHint::Url)]
     pub project_context: Option<ProjectId>,
 

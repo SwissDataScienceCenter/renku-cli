@@ -116,7 +116,7 @@ where
 impl fmt::Display for SessionList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.0.is_empty() {
-            write!(f, "No jobs/sessions found.")
+            write!(f, "No jobs found.")
         } else {
             let table = create_session_table(&self.0);
             write!(f, "{}", table)
