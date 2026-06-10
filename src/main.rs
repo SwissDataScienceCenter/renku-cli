@@ -4,7 +4,7 @@ use color_eyre::Result as EyreResult;
 use rnk::cli::opts::MainOpts;
 use rnk::error::Result;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> EyreResult<()> {
     rnk::error::init()?;
     execute().await?;
@@ -12,9 +12,7 @@ async fn main() -> EyreResult<()> {
 }
 
 async fn execute() -> Result<()> {
-    CompleteEnv::with_factory(MainOpts::command)
-
-        .complete();
+    CompleteEnv::with_factory(MainOpts::command).complete();
     let opts = rnk::read_args();
     env_logger::Builder::new()
         .filter_level(opts.common_opts.verbosity.log_level_filter())

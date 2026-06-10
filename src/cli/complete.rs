@@ -1,4 +1,4 @@
-use std::{ffi, thread};
+use std::ffi;
 
 use crate::{
     cli::opts::MainOpts,
@@ -11,35 +11,13 @@ use crate::{
 
 use clap::{Parser, builder::StyledStr};
 use clap_complete::CompletionCandidate;
-use futures::executor::block_on;
-use tokio::sync::mpsc;
 
 use super::opts::CommonOpts;
 
-pub fn make_sync_completer<F, Fut>(func: F) -> impl Fn(&ffi::OsStr) -> Vec<CompletionCandidate>
-where
-    F: Fn(&ffi::OsStr, Client) -> Fut + Clone + 'static,
-    Fut: Future<Output = Vec<CompletionCandidate>> + 'static,
-{
-    move |current: &ffi::OsStr| {
-        let Some(_current) = current.to_str() else {
-            return vec![];
-        };
-
-        let args = truncate_to_common_opts(std::env::args());
-        let Ok(opts) = MainOpts::try_parse_from(args) else {
-            return vec![];
-        };
-
-        let Ok(client) = opts.common_opts.create_client(None) else {
-            return vec![];
-        };
-
-        block_on(func(current, client))
-    }
-}
-
-pub fn make_sync_completer2<F, Fut>(current: &ffi::OsStr, func: F) -> Vec<CompletionCandidate>
+// Helper function to create completion-candidate functions that are
+// async and use the client and common options for their
+// implementation.
+fn make_sync_completer<F, Fut>(current: &ffi::OsStr, func: F) -> Vec<CompletionCandidate>
 where
     F: Fn(Client, CommonOpts) -> Fut + Clone + Send + 'static,
     Fut: Future<Output = Vec<CompletionCandidate>> + Send + 'static,
@@ -57,20 +35,26 @@ where
         return vec![];
     };
 
-    let (send, mut recv) = mpsc::unbounded_channel();
-    tokio::spawn(async move {
-        let result = func(client, opts.common_opts).await;
-        send.send(result).unwrap();
-    });
+    tokio::task::block_in_place(move || {
+        tokio::runtime::Handle::current().block_on(func(client, opts.common_opts))
+    })
 
-    let sync_recv = thread::spawn(move || {
-        let mut completions = vec![];
-        while let Some(candidate) = recv.blocking_recv() {
-            completions.extend(candidate);
-        }
-        completions
-    });
-    sync_recv.join().unwrap()
+    //    futures::executor::block_on(tokio::spawn(func(client, opts.common_opts))).unwrap()
+
+    // let (send, mut recv) = mpsc::unbounded_channel();
+    // tokio::spawn(async move {
+    //     let result = func(client, opts.common_opts).await;
+    //     send.send(result).unwrap();
+    // });
+
+    // let sync_recv = thread::spawn(move || {
+    //     let mut completions = vec![];
+    //     while let Some(candidate) = recv.blocking_recv() {
+    //         completions.extend(candidate);
+    //     }
+    //     completions
+    // });
+    // sync_recv.join().unwrap()
 }
 
 /// Returns the part of the arguments that make up CommonOpts
@@ -111,9 +95,9 @@ async fn resolve_project_id(client: &Client, id: ProjectId) -> Option<String> {
     client.get_project(&id).await.ok().flatten().map(|p| p.id)
 }
 
-/// Complete a session launcher id
+/// Complete a job session launcher id
 pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
-    make_sync_completer2(current, async |client, opts| {
+    make_sync_completer(current, async |client, opts| {
         let Ok(launchers) = client.list_launchers().await else {
             return vec![];
         };
