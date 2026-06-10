@@ -22,7 +22,10 @@ pub struct Input {
     #[arg(long, value_hint=ValueHint::Other, add = ArgValueCompleter::new(complete_job_launcher_id))]
     pub launcher: Ulid,
 
-    /// A submission id allows to deduplicate same job submissions. If missing, a random one is generated. It must be at least 4 characters, starting with a lowercase letter, followed by alphanumeric characters (including the dash).
+    /// A submission id allows to deduplicate same job submissions. If
+    /// missing, a random one is generated. It must be at least 4
+    /// characters, starting with a lowercase letter, followed by
+    /// alphanumeric characters (including the dash).
     #[arg(long)]
     pub submission_id: Option<SubmissionId>,
 

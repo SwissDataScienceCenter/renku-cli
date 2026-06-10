@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-use clap::{Parser, builder::StyledStr};
+use clap::{Parser, builder::StyledStr, error::Error as ClapError};
 use clap_complete::CompletionCandidate;
 
 use super::opts::CommonOpts;
@@ -26,43 +26,30 @@ where
         return vec![CompletionCandidate::new("invalid current str")];
     };
 
-    let args = truncate_to_common_opts(std::env::args()).collect::<Vec<String>>();
-    let Ok(opts) = MainOpts::try_parse_from(args) else {
-        return vec![CompletionCandidate::new("option parsing failed")];
+    let Ok(opts) = parse_common_opts() else {
+        eprintln!("Completions failed: Error parsing common options");
+        return vec![];
     };
 
-    let Ok(client) = opts.common_opts.create_client(None) else {
-        return vec![CompletionCandidate::new("client creation failed")];
+    let Ok(client) = opts.create_client(None) else {
+        eprintln!("Completions failed: Error creating http renku client");
+        return vec![];
     };
 
     tokio::task::block_in_place(move || {
-        tokio::runtime::Handle::current().block_on(func(client, opts.common_opts))
+        tokio::runtime::Handle::current().block_on(func(client, opts))
     })
-
-    //    futures::executor::block_on(tokio::spawn(func(client, opts.common_opts))).unwrap()
-
-    // let (send, mut recv) = mpsc::unbounded_channel();
-    // tokio::spawn(async move {
-    //     let result = func(client, opts.common_opts).await;
-    //     send.send(result).unwrap();
-    // });
-
-    // let sync_recv = thread::spawn(move || {
-    //     let mut completions = vec![];
-    //     while let Some(candidate) = recv.blocking_recv() {
-    //         completions.extend(candidate);
-    //     }
-    //     completions
-    // });
-    // sync_recv.join().unwrap()
 }
 
-/// Returns the part of the arguments that make up CommonOpts
-fn truncate_to_common_opts<I>(iter: I) -> impl Iterator<Item = String>
-where
-    I: IntoIterator<Item = String>,
-{
-    let mut it = iter.into_iter();
+/// Parses the part of the arguments that make up CommonOpts.
+fn parse_common_opts() -> Result<CommonOpts, ClapError> {
+    // this is a bit nasty, due to lack of a better option: manually
+    // massage the arguments to remove everything after the first
+    // non-option argument appears, which is the subcommand passed to
+    // the binary. Then the standard command 'version' is appended, so
+    // that parsing succeeds. Only common-options are of interest
+    // here.
+    let mut it = std::env::args();
     it.next();
     it.next();
     let first = it.next();
@@ -70,7 +57,8 @@ where
     let remain = it.take_while(|e| e.starts_with('-'));
     // the version command to make arg parsing successful
     let version = std::iter::once("version".to_string()).into_iter();
-    first_it.chain(remain).chain(version)
+    let args = first_it.chain(remain).chain(version);
+    MainOpts::try_parse_from(args).map(|e| e.common_opts)
 }
 
 async fn make_launcher_completion_candidate(
@@ -82,6 +70,7 @@ async fn make_launcher_completion_candidate(
     let cc = CompletionCandidate::new(launcher.id.clone());
 
     let Ok(Some(project)) = client.get_project_by_id(&launcher.project_id).await else {
+        eprintln!("Cannot get project details for: {}", launcher.project_id);
         return cc.help(Some(help));
     };
 
@@ -92,18 +81,26 @@ async fn make_launcher_completion_candidate(
 }
 
 async fn resolve_project_id(client: &Client, id: ProjectId) -> Option<String> {
-    client.get_project(&id).await.ok().flatten().map(|p| p.id)
+    match client.get_project(&id).await {
+        Ok(Some(p)) => Some(p.id),
+        Ok(None) => {
+            eprintln!("Project context not found: {}", id);
+            None
+        }
+        Err(msg) => {
+            eprintln!("Error getting project for id '{}': {}", id, msg);
+            None
+        }
+    }
 }
 
 /// Complete a job session launcher id
 pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
     make_sync_completer(current, async |client, opts| {
         let Ok(launchers) = client.list_launchers().await else {
-            return vec![CompletionCandidate::new("Getting list of launchers failed")];
+            eprintln!("Completions failed: Error getting list of launchers");
+            return vec![];
         };
-        if launchers.is_empty() {
-            return vec![CompletionCandidate::new("No launchers found")];
-        }
         let mut result: Vec<CompletionCandidate> = vec![];
         let project_ctx = opts.get_project_context().ok().flatten();
         let project_id = match project_ctx {
@@ -122,9 +119,8 @@ pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate
             result.push(cc);
         }
         if result.is_empty() {
-            vec![CompletionCandidate::new("no results after filtering")]
-        } else {
-            return result;
+            eprintln!("No job launchers found.");
         }
+        result
     })
 }
