@@ -23,16 +23,16 @@ where
     Fut: Future<Output = Vec<CompletionCandidate>> + Send + 'static,
 {
     let Some(_current) = current.to_str() else {
-        return vec![];
+        return vec![CompletionCandidate::new("invalid current str")];
     };
 
     let args = truncate_to_common_opts(std::env::args()).collect::<Vec<String>>();
     let Ok(opts) = MainOpts::try_parse_from(args) else {
-        return vec![];
+        return vec![CompletionCandidate::new("option parsing failed")];
     };
 
     let Ok(client) = opts.common_opts.create_client(None) else {
-        return vec![];
+        return vec![CompletionCandidate::new("client creation failed")];
     };
 
     tokio::task::block_in_place(move || {
@@ -99,8 +99,11 @@ async fn resolve_project_id(client: &Client, id: ProjectId) -> Option<String> {
 pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
     make_sync_completer(current, async |client, opts| {
         let Ok(launchers) = client.list_launchers().await else {
-            return vec![];
+            return vec![CompletionCandidate::new("Getting list of launchers failed")];
         };
+        if launchers.is_empty() {
+            return vec![CompletionCandidate::new("No launchers found")];
+        }
         let mut result: Vec<CompletionCandidate> = vec![];
         let project_ctx = opts.get_project_context().ok().flatten();
         let project_id = match project_ctx {
@@ -118,6 +121,10 @@ pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate
             let cc = make_launcher_completion_candidate(&client, &launcher).await;
             result.push(cc);
         }
-        return result;
+        if result.is_empty() {
+            vec![CompletionCandidate::new("no results after filtering")]
+        } else {
+            return result;
+        }
     })
 }
