@@ -52,7 +52,7 @@ impl Input {
         let submission_id = self
             .submission_id
             .clone()
-            .unwrap_or_else(|| SubmissionId::random());
+            .unwrap_or_else(SubmissionId::random);
         let cmd = if self.command.is_empty() {
             None
         } else {

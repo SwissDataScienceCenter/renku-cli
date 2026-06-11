@@ -109,10 +109,10 @@ impl CommonOpts {
 
     pub fn get_project_context(&self) -> Result<Option<ProjectId>, ProjectIdParseError> {
         if self.project_context.is_some() {
-            return Ok(self.project_context.clone());
+            Ok(self.project_context.clone())
         } else {
             match std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok() {
-                Some(id) => ProjectId::parse(&id).map(|e| Some(e)),
+                Some(id) => ProjectId::parse(&id).map(Some),
                 None => Ok(None),
             }
         }

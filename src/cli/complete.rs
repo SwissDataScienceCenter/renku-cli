@@ -56,7 +56,7 @@ fn parse_common_opts() -> Result<CommonOpts, ClapError> {
     let first_it = first.map(std::iter::once).into_iter().flatten();
     let remain = it.take_while(|e| e.starts_with('-'));
     // the version command to make arg parsing successful
-    let version = std::iter::once("version".to_string()).into_iter();
+    let version = std::iter::once("version".to_string());
     let args = first_it.chain(remain).chain(version);
     MainOpts::try_parse_from(args).map(|e| e.common_opts)
 }
@@ -77,7 +77,7 @@ async fn make_launcher_completion_candidate(
     help.push_str(" - ");
     help.push_str(&project.name);
 
-    cc.help(Some(help.into()))
+    cc.help(Some(help))
 }
 
 async fn resolve_project_id(client: &Client, id: ProjectId) -> Option<String> {
@@ -115,7 +115,7 @@ pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate
                 None => true,
             })
         {
-            let cc = make_launcher_completion_candidate(&client, &launcher).await;
+            let cc = make_launcher_completion_candidate(&client, launcher).await;
             result.push(cc);
         }
         if result.is_empty() {
