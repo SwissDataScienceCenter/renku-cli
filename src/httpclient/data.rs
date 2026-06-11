@@ -93,10 +93,7 @@ where
     let mut builder = Builder::default();
     for e in data {
         let r = e.borrow();
-        let sub_id = match &r.submission_id {
-            Some(n) => n,
-            None => "-",
-        };
+        let sub_id = r.submission_id.as_deref().unwrap_or("-");
         let started = r.started.format();
         let data = vec![&r.name, sub_id, &r.project_id, &r.status.state, &started];
         builder.push_record(data);

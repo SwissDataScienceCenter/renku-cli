@@ -23,7 +23,7 @@ where
     Fut: Future<Output = Vec<CompletionCandidate>> + Send + 'static,
 {
     let Some(_current) = current.to_str() else {
-        return vec![CompletionCandidate::new("invalid current str")];
+        return vec![];
     };
 
     let Ok(opts) = parse_common_opts() else {
@@ -49,9 +49,7 @@ fn parse_common_opts() -> Result<CommonOpts, ClapError> {
     // the binary. Then the standard command 'version' is appended, so
     // that parsing succeeds. Only common-options are of interest
     // here.
-    let mut it = std::env::args();
-    it.next();
-    it.next();
+    let mut it = std::env::args().skip(2);
     let first = it.next();
     let first_it = first.map(std::iter::once).into_iter().flatten();
     let remain = it.take_while(|e| e.starts_with('-'));
