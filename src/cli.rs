@@ -61,7 +61,7 @@ impl fmt::Display for BuildInfo {
         let cc = &self.git_commit[..8];
         write!(
             f,
-            "  Built at: {}\n  Version: {}\n  Sha: {}",
+            "Renku CLI:\nBuilt at: {}\nVersion: {}\nSha: {}",
             self.build_date, self.build_version, cc
         )
     }

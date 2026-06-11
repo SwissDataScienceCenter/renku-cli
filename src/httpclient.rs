@@ -261,13 +261,9 @@ impl Client {
 
     /// Queries Renku for its version
     pub async fn version(&self) -> Result<VersionInfo, Error> {
-        let data = self
-            .json_get::<SimpleVersion>("/ui-server/api/data/version")
-            .await?;
-        let search = self
-            .json_get::<SearchServiceVersion>("/ui-server/api/search/version")
-            .await?;
-        Ok(VersionInfo { search, data })
+        let renku = self.json_get::<SimpleVersion>("/api/data/version").await?;
+        let renku_url = self.base_url().clone();
+        Ok(VersionInfo { renku, renku_url })
     }
 
     pub async fn get_project(&self, id: &ProjectId) -> Result<Option<ProjectDetails>, Error> {

@@ -1,7 +1,7 @@
 //! Defines data structures for requests and responses and their
 //! `De/Serialize` instances.
 
-use crate::data::submission_id::SubmissionId;
+use crate::data::{renku_url::RenkuUrl, submission_id::SubmissionId};
 use iso8601_timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Borrow, collections::HashMap, fmt};
@@ -184,8 +184,18 @@ pub struct SimpleVersion {
 /// Describes the version information provided by the renku platform.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VersionInfo {
-    pub search: SearchServiceVersion,
-    pub data: SimpleVersion,
+    pub renku_url: RenkuUrl,
+    pub renku: SimpleVersion,
+}
+
+impl fmt::Display for VersionInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Renku Platform:\nUrl: {}\nVersion: {}",
+            self.renku_url, self.renku.version
+        )
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
