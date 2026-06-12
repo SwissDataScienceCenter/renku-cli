@@ -63,6 +63,27 @@ self_update = { version = "0.43.1", features = [
 ] }
 md5 = "0.8.0"
 ulid = "1.2.1"
+keyring-core = {version = "1.0.0", features = ["sample"]}
+users = "0.11"
+
+# [target.'cfg(target_os = "windows")'.dependencies]
+windows-native-keyring-store = "1.1.0"
+
+
+# [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+db-keystore = { version = "0.4.3" }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1.0.0", features = ["keychain"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+linux-keyutils-keyring-store = { version = "1.0.0" }
+
+[target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
+#dbus-secret-service-keyring-store = { version = "1.0.0", features = ["crypto-rust", "vendored"] }
+zbus-secret-service-keyring-store = { version = "1.0.0", features = ["crypto-rust"] }
+
+
 
 [features]
 default = ["reqwest/default-tls"] # link against system library
