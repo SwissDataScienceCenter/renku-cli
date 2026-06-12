@@ -144,6 +144,9 @@ pub enum SubCommand {
 
     #[command()]
     Job(job::Input),
+
+    #[command()]
+    Logout(logout::Input),
 }
 
 /// This is the command line interface to the Renku platform. Main

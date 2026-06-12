@@ -437,4 +437,8 @@ impl Client {
         let result = self.json_get::<Vec<SessionLauncher>>(path).await?;
         Ok(result)
     }
+
+    pub async fn clear_token(&self) -> Result<(), Error> {
+        self.keystore.clear().context(KeystoreSnafu)
+    }
 }

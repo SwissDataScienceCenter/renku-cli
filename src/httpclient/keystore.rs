@@ -58,6 +58,7 @@ pub fn set_default_global_keyring_store() -> Result<bool, Error> {
 pub trait Keystore {
     fn write_token(&self, token: &Response) -> Result<(), Error>;
     fn read_token(&self) -> Result<Option<Response>, Error>;
+    fn clear(&self) -> Result<(), Error>;
 }
 
 pub struct KeyringStore {
@@ -177,6 +178,15 @@ impl Keystore for KeyringStore {
             }
             Err(keyring_core::Error::NoEntry) => Ok(None),
             Err(err) => Err(Error::ReadSecret { source: err }),
+        }
+    }
+
+    fn clear(&self) -> Result<(), Error> {
+        let entry = self.build_entry()?;
+        match entry.delete_credential() {
+            Ok(()) => Ok(()),
+            Err(keyring_core::Error::NoEntry) => Ok(()),
+            Err(err) => Err(Error::WriteSecret { source: err }),
         }
     }
 }
