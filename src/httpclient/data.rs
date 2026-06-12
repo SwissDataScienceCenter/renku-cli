@@ -4,7 +4,7 @@
 use crate::data::{renku_url::RenkuUrl, submission_id::SubmissionId};
 use iso8601_timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Borrow, collections::HashMap, fmt};
+use std::{collections::HashMap, fmt};
 use tabled::{
     Table,
     builder::Builder,
@@ -85,14 +85,12 @@ impl fmt::Display for SessionStartRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionList(pub Vec<SessionStartResponse>);
 
-fn create_session_table<I, T>(data: I) -> Table
+fn create_session_table<'a, I>(data: I) -> Table
 where
-    I: IntoIterator<Item = T>,
-    T: Borrow<SessionStartResponse>,
+    I: IntoIterator<Item = &'a SessionStartResponse>,
 {
     let mut builder = Builder::default();
-    for e in data {
-        let r = e.borrow();
+    for r in data {
         let sub_id = r.submission_id.as_deref().unwrap_or("-");
         let started = r.started.format();
         let data = vec![&r.name, sub_id, &r.project_id, &r.status.state, &started];
