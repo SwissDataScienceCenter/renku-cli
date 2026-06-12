@@ -261,13 +261,9 @@ impl Client {
 
     /// Queries Renku for its version
     pub async fn version(&self) -> Result<VersionInfo, Error> {
-        let data = self
-            .json_get::<SimpleVersion>("/ui-server/api/data/version")
-            .await?;
-        let search = self
-            .json_get::<SearchServiceVersion>("/ui-server/api/search/version")
-            .await?;
-        Ok(VersionInfo { search, data })
+        let renku = self.json_get::<SimpleVersion>("/api/data/version").await?;
+        let renku_url = self.base_url().clone();
+        Ok(VersionInfo { renku, renku_url })
     }
 
     pub async fn get_project(&self, id: &ProjectId) -> Result<Option<ProjectDetails>, Error> {
@@ -301,12 +297,19 @@ impl Client {
         Ok(details)
     }
 
+    /// Get project details by a ui url. It supports two formats:
+    /// - /p/<ulid>
+    /// - /p/<namespace>/<slug>
     pub async fn get_project_by_url<U: IntoUrl>(
         &self,
         url: U,
     ) -> Result<Option<ProjectDetails>, Error> {
         let urlstr = url.as_str().to_string();
         let url = url.into_url().context(HttpSnafu { url: urlstr })?;
+        let mut base = url.clone();
+        base.set_path("");
+        let base_url = RenkuUrl::new(base);
+
         log::debug!("Get project by url: {}", &url);
         // there are different urls identifying the project
         //   /v2/projects/<id> (ui)
@@ -314,27 +317,12 @@ impl Client {
         // note the ui urls are currently not stable
         let project_path_regex = Regex::new(
             r"(?x)
-            (?<uiproj>/v2/projects/)(?<uiid>[0-7][0-9A-HJKMNP-TV-Z]{25}) # /v2/projects/<id> (ui)
+            (?<uiproj>/p/)(?<uiid>[0-7][0-9A-HJKMNP-TV-Z]{25}) # /p/<id> (ui)
             |
-            (?<uinamespace>/v2/projects/)(?<uins>[^/]+)/(?<uiname>.+) # /v2/projects/<namespace>/<slug> (ui)").unwrap();
+            (?<uinamespace>/p/)(?<uins>[^/]+)/(?<uiname>.+) # /p/<namespace>/<slug> (ui)",
+        )
+        .unwrap();
         let captures = project_path_regex.captures(url.path()).unwrap();
-        let path = if captures.name("uiproj").is_some() {
-            let proj_id = captures.name("uiid").unwrap().as_str();
-            format!("/api/data/projects/{}", proj_id)
-        } else if captures.name("uinamespace").is_some() {
-            let namespace = captures.name("uins").unwrap().as_str();
-            let proj_name = captures.name("uiname").unwrap().as_str();
-            format!("/api/data/namespaces/{}/projects/{}", namespace, proj_name)
-        } else {
-            return Err(Error::ProjectUrlParse {
-                reason: format!("Url {} did not match project URL pattern", url.path()),
-            });
-        };
-
-        log::debug!("Transformed path {} to: {}", url.path(), &path);
-        let mut base = url.clone();
-        base.set_path("");
-        let base_url = RenkuUrl::new(base);
 
         log::debug!("Create temporary client for {}", &base_url);
         let client = Client::new(
@@ -344,8 +332,37 @@ impl Client {
             self.settings.accept_invalid_certs,
             self.access_token.clone(),
         )?;
+        if captures.name("uiproj").is_some() {
+            let proj_id = captures.name("uiid").unwrap().as_str();
+            client.get_project_by_id(proj_id).await
+        } else if captures.name("uinamespace").is_some() {
+            let namespace = captures.name("uins").unwrap().as_str();
+            let proj_name = captures.name("uiname").unwrap().as_str();
+            client.get_project_by_slug(namespace, proj_name).await
+        } else {
+            Err(Error::ProjectUrlParse {
+                reason: format!("Url {} did not match project URL pattern", url.path()),
+            })
+        }
+    }
 
-        let details = client.json_get_option::<ProjectDetails>(&path).await?;
+    pub async fn get_namespace(
+        &self,
+        first_slug: &str,
+        second_slug: Option<&str>,
+    ) -> Result<Option<NamespaceDetails>, Error> {
+        log::debug!(
+            "Get namespace by slug1/slug2: {}/{:?}",
+            first_slug,
+            second_slug
+        );
+        let path = if let Some(second) = second_slug {
+            format!("/api/data/namespaces/{}/{}", first_slug, second)
+        } else {
+            format!("/api/data/namespaces/{}", first_slug)
+        };
+
+        let details = self.json_get_option::<NamespaceDetails>(&path).await?;
         Ok(details)
     }
 
@@ -405,5 +422,11 @@ impl Client {
         let r = auth::poll_tokens(code).await?;
         cache::write_auth_token(&r).await?;
         Ok(r)
+    }
+
+    pub async fn list_launchers(&self) -> Result<Vec<SessionLauncher>, Error> {
+        let path = "/api/data/session_launchers";
+        let result = self.json_get::<Vec<SessionLauncher>>(path).await?;
+        Ok(result)
     }
 }

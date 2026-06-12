@@ -4,7 +4,7 @@ use color_eyre::Result as EyreResult;
 use rnk::cli::opts::MainOpts;
 use rnk::error::Result;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> EyreResult<()> {
     rnk::error::init()?;
     execute().await?;

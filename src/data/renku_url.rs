@@ -4,6 +4,8 @@ use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use url::ParseError;
 
+const RENKULAB_IO: &str = "https://renkulab.io";
+
 // Need this newtype to be able to implement Serialize and Deserialize
 
 #[derive(Debug, PartialEq, Clone)]
@@ -31,6 +33,16 @@ impl RenkuUrl {
     pub fn join(&self, seg: &str) -> Result<RenkuUrl, ParseError> {
         let RenkuUrl(u) = self;
         u.join(seg).map(RenkuUrl)
+    }
+
+    pub fn from_env() -> Option<Result<RenkuUrl, ParseError>> {
+        std::env::var("RENKU_CLI_RENKU_URL")
+            .ok()
+            .map(|u| RenkuUrl::parse(&u))
+    }
+
+    pub fn renkulab_io() -> RenkuUrl {
+        RenkuUrl::parse(RENKULAB_IO).unwrap()
     }
 }
 

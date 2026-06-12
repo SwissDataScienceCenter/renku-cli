@@ -20,6 +20,7 @@ console = { version = "0.15.11" }
 env_logger = { version = "0.11.5" }
 log = { version = "0.4.22" }
 openssl = { version = "0.10.75", optional = true }
+rand = { version = "0.8" }
 reqwest = { version = "0.12.28", default-features = false, features = [
   "json",
   "multipart",
@@ -35,6 +36,7 @@ tabled = "0.20.0"
 chrono = "0.4.43"
 futures = { version = "0.3" }
 regex = { version = "1.12.3" }
+regex-macro = { version = "0.3.0" }
 iso8601-timestamp = { version = "0.2.17" }
 toml = { version = "0.8.19" }
 git2 = { version = "0.19.0", default-features = false, features = [

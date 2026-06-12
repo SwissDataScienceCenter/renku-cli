@@ -1,10 +1,16 @@
-use crate::data::renku_url::RenkuUrl;
+use crate::{
+    data::{
+        project_id::{ProjectId, ProjectIdParseError},
+        renku_url::RenkuUrl,
+    },
+    httpclient::{Client, Error as ClientError, proxy},
+};
 
 use super::cmd::*;
 use clap::{Parser, ValueEnum, ValueHint};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 
 /// Main options are available to all commands. They must appear
 /// before a sub-command.
@@ -28,6 +34,14 @@ pub struct CommonOpts {
     #[arg(long, value_hint = ValueHint::Url)]
     pub renku_url: Option<RenkuUrl>,
 
+    /// Some commands may operate within a project. If this option is
+    /// set, or the environment variable RENKU_CLI_PROJECT_CONTEXT is
+    /// present commands can use it to confine there functionality to
+    /// this project. The value may be the project id (ulid) or the
+    /// path like <username>/<project-name>.
+    #[arg(long, value_hint = ValueHint::Url)]
+    pub project_context: Option<ProjectId>,
+
     /// Set a proxy to use for doing http requests. By default, the
     /// system proxy will be used. Can be either `none` or <url>. If
     /// `none`, the system proxy will be ignored; otherwise specify
@@ -42,6 +56,67 @@ pub struct CommonOpts {
     /// The password to authenticate at the proxy.
     #[arg(long)]
     pub proxy_password: Option<String>,
+}
+
+impl CommonOpts {
+    const ACCESS_TOKEN_ENV: &str = "RENKU_CLI_ACCESS_TOKEN";
+
+    pub fn create_client(&self, trusted_cert: Option<PathBuf>) -> Result<Client, ClientError> {
+        let at = std::env::var(Self::ACCESS_TOKEN_ENV).ok();
+        let base_url = self
+            .get_renku_url()
+            .map_err(|e| ClientError::UrlParse { source: e })?;
+        Client::new(base_url, self.proxy_settings(), trusted_cert, false, at)
+    }
+
+    fn proxy_settings(&self) -> proxy::ProxySetting {
+        let user = self.proxy_user.clone();
+        let password = self.proxy_password.clone();
+        let prx = self.proxy.clone();
+
+        log::debug!("Using proxy: {:?} @ {:?}", user, prx);
+        match prx {
+            None => proxy::ProxySetting::System,
+            Some(ProxySetting::None) => proxy::ProxySetting::None,
+            Some(ProxySetting::Custom { url }) => proxy::ProxySetting::Custom {
+                url: url.clone(),
+                user,
+                password,
+            },
+        }
+    }
+
+    fn get_renku_url(&self) -> Result<RenkuUrl, url::ParseError> {
+        match &self.renku_url {
+            Some(u) => {
+                log::debug!("Use renku url from arguments: {}", u);
+                Ok(u.clone())
+            }
+            None => match RenkuUrl::from_env() {
+                Some(res) => {
+                    if let Ok(u) = &res {
+                        log::debug!("Use renku url from env RENKU_CLI_RENKU_URL: {}", u);
+                    }
+                    res
+                }
+                None => {
+                    log::debug!("Use renku url: https://renkulab.io");
+                    Ok(RenkuUrl::renkulab_io())
+                }
+            },
+        }
+    }
+
+    pub fn get_project_context(&self) -> Result<Option<ProjectId>, ProjectIdParseError> {
+        if self.project_context.is_some() {
+            Ok(self.project_context.clone())
+        } else {
+            match std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok() {
+                Some(id) => ProjectId::parse(&id).map(Some),
+                None => Ok(None),
+            }
+        }
+    }
 }
 
 #[derive(Parser, Debug)]

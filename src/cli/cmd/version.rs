@@ -11,14 +11,12 @@ use std::fmt;
 
 /// Prints version about server and client.
 ///
-/// Queries the server for its version information and prints more
-/// version details about this client.
+/// Prints version details about this client and can also query the renku platform for its verion.
 #[derive(Parser, Debug, PartialEq)]
 pub struct Input {
-    /// Only show the client version and don't request server side
-    /// version information.
+    /// Also request the version on the renku platform.
     #[arg(long, default_value_t = false)]
-    pub client_only: bool,
+    pub with_server: bool,
 }
 
 #[derive(Debug, Snafu)]
@@ -32,44 +30,38 @@ pub enum Error {
 
 impl Input {
     pub async fn exec(&self, ctx: &Context) -> Result<(), Error> {
-        if self.client_only {
-            let vinfo = BuildInfo::default();
-            ctx.write_result(&vinfo).await.context(WriteResultSnafu)?;
-        } else {
+        if self.with_server {
             let result = ctx.client.version().await.context(HttpClientSnafu)?;
-            let urlstr = ctx.renku_url().as_str();
-            let vinfo = Versions::create(result, urlstr);
-            ctx.write_result(&vinfo).await.context(WriteResultSnafu)?;
+            let info = Versions::create(result);
+            ctx.write_result(&info).await.context(WriteResultSnafu)?;
+        } else {
+            let build_info = BuildInfo::default();
+            ctx.write_result(&build_info)
+                .await
+                .context(WriteResultSnafu)?;
         }
         Ok(())
     }
 }
 
 #[derive(Debug, Serialize)]
-pub struct Versions<'a> {
-    pub client: BuildInfo,
-    pub server: VersionInfo,
-    pub renku_url: &'a str,
+pub struct Versions {
+    pub renku_cli: BuildInfo,
+    pub renku_platform: VersionInfo,
 }
-impl Versions<'_> {
-    pub fn create(server: VersionInfo, renku_url: &'_ str) -> Versions<'_> {
+impl Versions {
+    pub fn create(renku_platform: VersionInfo) -> Versions {
         Versions {
-            client: BuildInfo::default(),
-            server,
-            renku_url,
+            renku_cli: BuildInfo::default(),
+            renku_platform,
         }
     }
 }
 
-impl fmt::Display for Versions<'_> {
+impl fmt::Display for Versions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let hc = &self.server.search.head_commit[..8];
-        write!(
-            f,
-            "Client:\n{}\n\nRenku @ {}\n  Data Services: {}\n  Search Services: {} ({})",
-            self.client, self.renku_url, self.server.data.version, self.server.search.version, hc
-        )
+        write!(f, "{}\n\n{}", self.renku_cli, self.renku_platform)
     }
 }
 
-impl Sink for Versions<'_> {}
+impl Sink for Versions {}
