@@ -198,8 +198,8 @@
           tokio-console
           fenixToolChain.rust-analyzer
           fenixToolChain.rustfmt
-#          keyutils
-#          gnome-keyring
+          #keyutils
+          #gnome-keyring
         ];
       };
     })

@@ -1,8 +1,6 @@
 use super::Context;
 use crate::httpclient::Error as HttpError;
-use crate::{
-    cli::sink::Error as SinkError, data::simple_message::SimpleMessage,
-};
+use crate::{cli::sink::Error as SinkError, data::simple_message::SimpleMessage};
 use clap::Parser;
 use snafu::{ResultExt, Snafu};
 
@@ -26,7 +24,6 @@ impl Input {
         let message = "Logout complete.".to_string();
         ctx.write_result(&SimpleMessage { message })
             .await
-            .context(WriteResultSnafu)?;
-        Ok(())
+            .context(WriteResultSnafu)
     }
 }
