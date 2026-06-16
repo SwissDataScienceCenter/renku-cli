@@ -95,9 +95,15 @@ async fn resolve_project_id(client: &Client, id: ProjectId) -> Option<String> {
 /// Complete a job session launcher id
 pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
     make_sync_completer(current, async |client, opts| {
-        let Ok(launchers) = client.list_launchers().await else {
-            eprintln!("Completions failed: Error getting list of launchers");
-            return vec![];
+        let launchers = match client.list_launchers().await {
+            Err(msg) => {
+                eprintln!(
+                    "Completions failed: Error getting list of launchers: {}",
+                    msg
+                );
+                return vec![];
+            }
+            Ok(res) => res,
         };
         let mut result: Vec<CompletionCandidate> = vec![];
         let project_ctx = opts.get_project_context().ok().flatten();

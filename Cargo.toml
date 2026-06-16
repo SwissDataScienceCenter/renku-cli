@@ -64,8 +64,7 @@ self_update = { version = "0.43.1", features = [
 md5 = "0.8.0"
 ulid = "1.2.1"
 keyring-core = {version = "1.0.0", features = ["sample"]}
-sysinfo = "0.38.4"
-uzers = "0.12.2"
+whoami = "2.1.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-native-keyring-store = "1.1.0"
