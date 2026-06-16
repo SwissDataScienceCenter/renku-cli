@@ -149,7 +149,7 @@ impl KeyringStore {
 
     fn build_entry(&self) -> Result<keyring_core::Entry, Error> {
         let service = self.renku_url.as_url().domain().unwrap_or("renku");
-        let user = users::get_current_username()
+        let user = uzers::get_current_username()
             .unwrap_or("default_user".into())
             .to_string_lossy()
             .to_string();
