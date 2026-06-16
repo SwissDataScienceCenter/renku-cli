@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
 use db_keystore::{DbKeyStore, DbKeyStoreConfig};
 use directories::ProjectDirs;
@@ -254,15 +254,22 @@ fn get_db_keystore() -> Result<Arc<keyring_core::CredentialStore>, Error> {
     let store = DbKeyStore::new(config).context(KeystoreCreateSnafu)?;
 
     // file has been created after store is initialized
-    if cfg!(unix) {
-        use std::os::unix::fs::PermissionsExt;
-
-        let mut perms = std::fs::metadata(&keystore_file)
-            .context(WriteFileSnafu)?
-            .permissions();
-        perms.set_mode(0o600);
-        std::fs::set_permissions(&keystore_file, perms).context(WriteFileSnafu)?;
-    }
+    set_readonly(&keystore_file)?;
 
     Ok(store)
 }
+
+#[cfg(unix)]
+fn set_readonly(file: &PathBuf) -> Result<(), Error> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mut perms = std::fs::metadata(file)
+        .context(WriteFileSnafu)?
+        .permissions();
+    perms.set_mode(0o600);
+    std::fs::set_permissions(file, perms).context(WriteFileSnafu)?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn set_readonly(file: &PathBuf) -> Result<(), Error> {}
