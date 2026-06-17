@@ -7,14 +7,6 @@ use log;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
 
-#[cfg(windows)]
-use windows_native_keyring_store::Store as WindowsStore;
-
-#[cfg(target_os = "linux")]
-use linux_keyutils_keyring_store::Store as KernelStore;
-#[cfg(any(target_os = "linux", target_os = "freebsd"))]
-use zbus_secret_service_keyring_store::Store as ZBusStore;
-
 use crate::data::renku_url::RenkuUrl;
 
 use super::auth::Response;
@@ -110,12 +102,16 @@ impl KeyringStore {
             }
             #[cfg(target_os = "linux")]
             KeystorePreference::LinuxKeyUtils => {
+                use linux_keyutils_keyring_store::Store as KernelStore;
+
                 log::info!("Using linux keyutils keyring as requested.");
                 let cs: Arc<CredentialStore> = KernelStore::new().context(KeystoreCreateSnafu)?;
                 Ok(cs)
             }
             #[cfg(any(target_os = "linux", target_os = "freebsd"))]
             KeystorePreference::DBus => {
+                use zbus_secret_service_keyring_store::Store as ZBusStore;
+
                 log::info!("Using an dbus secret service as requested.");
                 let cs: Arc<CredentialStore> = ZBusStore::new().context(KeystoreCreateSnafu)?;
                 Ok(cs)
@@ -189,11 +185,19 @@ impl Keystore for KeyringStore {
 
 #[cfg(target_os = "windows")]
 fn get_native_keystore() -> Result<Option<Arc<keyring_core::CredentialStore>>, Error> {
-    WindowsStore::new().context(KeystoreCreateSnafu).map(Some)
+    use std::sync::Arc;
+    use windows_native_keyring_store::Store as WindowsStore;
+
+    WindowsStore::new()
+        .context(KeystoreCreateSnafu)
+        .map(|s| Some(s as Arc<keyring_core::CredentialStore>))
 }
 
 #[cfg(target_os = "linux")]
 fn get_native_keystore() -> Result<Option<Arc<keyring_core::CredentialStore>>, Error> {
+    use linux_keyutils_keyring_store::Store as KernelStore;
+    use zbus_secret_service_keyring_store::Store as ZBusStore;
+
     match ZBusStore::new().context(KeystoreCreateSnafu) {
         Ok(store) => {
             log::info!("Use DBus secret service as keystore.");
@@ -210,6 +214,8 @@ fn get_native_keystore() -> Result<Option<Arc<keyring_core::CredentialStore>>, E
 
 #[cfg(target_os = "freebsd")]
 fn get_native_keystore() -> Result<Option<Arc<keyring_core::CredentialStore>>, Error> {
+    use zbus_secret_service_keyring_store::Store as ZBusStore;
+
     let store = ZBusStore::new().context(KeystoreCreateSnafu)?;
     log::info!("Use DBus secret service as keystore.");
     Ok(Some(store))
@@ -272,4 +278,6 @@ fn set_readonly(file: &PathBuf) -> Result<(), Error> {
 }
 
 #[cfg(not(unix))]
-fn set_readonly(file: &PathBuf) -> Result<(), Error> {}
+fn set_readonly(_file: &PathBuf) -> Result<(), Error> {
+    Ok(())
+}
