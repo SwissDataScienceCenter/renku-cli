@@ -4,6 +4,7 @@ use crate::{
         renku_url::RenkuUrl,
     },
     httpclient::{Client, Error as ClientError, proxy},
+    project_config::RenkuProjectConfig,
 };
 
 use super::cmd::*;
@@ -107,13 +108,32 @@ impl CommonOpts {
         }
     }
 
+    /// Return the project context.
+    ///
+    /// The project context is a project identifier that commands can
+    /// use to scope their actions to that project. It is read via the
+    /// following strategy (first wins):
+    ///
+    /// - use the option if specified
+    /// - read $CWD/.renku/config.toml
+    /// - use environment variable RENKU_CLI_PROJECT_CONTEXT
     pub fn get_project_context(&self) -> Result<Option<ProjectId>, ProjectIdParseError> {
-        if self.project_context.is_some() {
-            Ok(self.project_context.clone())
-        } else {
+        fn get_from_env() -> Result<Option<ProjectId>, ProjectIdParseError> {
             match std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok() {
                 Some(id) => ProjectId::parse(&id).map(Some),
                 None => Ok(None),
+            }
+        }
+        if self.project_context.is_some() {
+            Ok(self.project_context.clone())
+        } else {
+            match RenkuProjectConfig::read_current_dir() {
+                Ok(None) => get_from_env(),
+                Ok(Some(cfg)) => Ok(Some(ProjectId::Id(cfg.project.id))),
+                Err(err) => {
+                    log::warn!("Error getting project config: {}", err);
+                    get_from_env()
+                }
             }
         }
     }
