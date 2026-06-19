@@ -56,6 +56,20 @@ impl RenkuProjectConfig {
         }
     }
 
+    /// Look for a file `.renku/config.toml` and read this file into the struct.
+    pub fn read_current_dir() -> Result<Option<RenkuProjectConfig>, ProjectConfigError> {
+        let cwd = std::env::current_dir().map_err(|e| ProjectConfigError::ReadFile {
+            source: e,
+            path: PathBuf::new(),
+        })?;
+        let target = cwd.join(".renku").join("config.toml");
+        if target.exists() {
+            Self::read(&target).map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn read(file: &Path) -> Result<RenkuProjectConfig, ProjectConfigError> {
         let cnt = std::fs::read_to_string(file).map_err(|e| ProjectConfigError::ReadFile {
             source: e,

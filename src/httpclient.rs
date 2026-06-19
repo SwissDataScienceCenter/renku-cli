@@ -25,8 +25,8 @@
 //! TODO
 
 pub mod auth;
-mod cache;
 pub mod data;
+pub mod keystore;
 pub mod proxy;
 
 use crate::data::project_id::ProjectId;
@@ -34,6 +34,7 @@ use crate::data::renku_url::RenkuUrl;
 
 use self::data::*;
 use auth::{Response, UserCode};
+use keystore::{KeyringStore, Keystore};
 use openidconnect::OAuth2TokenResponse;
 use regex::Regex;
 use reqwest::{Certificate, ClientBuilder, IntoUrl, RequestBuilder, Url};
@@ -56,6 +57,9 @@ fn display_bad_response(em: &Option<ErrorResponse>, body: &String) -> String {
 #[derive(Debug, Snafu)]
 #[snafu(visibility(pub(crate)))]
 pub enum Error {
+    #[snafu(display("Keystore error: {}", source))]
+    Keystore { source: keystore::Error },
+
     #[snafu(display("An error was received from {}: {}", url, source))]
     Http { source: reqwest::Error, url: String },
 
@@ -91,11 +95,9 @@ pub enum Error {
 
     #[snafu(display("Error parsing url: {}", reason))]
     ProjectUrlParse { reason: String },
-    #[snafu(transparent)]
-    Auth { source: auth::AuthError },
 
     #[snafu(transparent)]
-    Cache { source: cache::Error },
+    Auth { source: auth::AuthError },
 }
 
 /// The renku http client.
@@ -106,6 +108,7 @@ pub struct Client {
     client: reqwest::Client,
     settings: Settings,
     access_token: Option<String>,
+    keystore: KeyringStore,
 }
 
 #[derive(Debug)]
@@ -151,8 +154,12 @@ impl Client {
             }
         }
 
-        let auth_data = access_token
-            .or(cache::read_auth_token()?.map(|r| r.response.access_token().secret().clone()));
+        let keystore = keystore::KeyringStore::new(renku_url.clone()).context(KeystoreSnafu)?;
+
+        let auth_data = access_token.or(keystore
+            .read_token()
+            .context(KeystoreSnafu)?
+            .map(|r| r.response.access_token().secret().clone()));
         let client = client_builder.build().context(ClientCreateSnafu)?;
         Ok(Client {
             client,
@@ -163,6 +170,7 @@ impl Client {
                 accept_invalid_certs,
                 base_url: renku_url,
             },
+            keystore,
         })
     }
 
@@ -420,7 +428,7 @@ impl Client {
 
     pub async fn complete_login_flow(&self, code: UserCode) -> Result<Response, Error> {
         let r = auth::poll_tokens(code).await?;
-        cache::write_auth_token(&r).await?;
+        self.keystore.write_token(&r).context(KeystoreSnafu)?;
         Ok(r)
     }
 
@@ -428,5 +436,9 @@ impl Client {
         let path = "/api/data/session_launchers";
         let result = self.json_get::<Vec<SessionLauncher>>(path).await?;
         Ok(result)
+    }
+
+    pub async fn clear_token(&self) -> Result<(), Error> {
+        self.keystore.clear().context(KeystoreSnafu)
     }
 }

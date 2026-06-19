@@ -1,6 +1,7 @@
 pub mod dataset;
 pub mod job;
 pub mod login;
+pub mod logout;
 pub mod project;
 pub mod update;
 #[cfg(feature = "user-doc")]
@@ -71,6 +72,9 @@ pub enum CmdError {
 
     #[snafu(display("Job - {}", source))]
     Job { source: job::Error },
+
+    #[snafu(display("Logout - {}", source))]
+    Logout { source: logout::Error },
 }
 
 impl From<job::Error> for CmdError {
@@ -106,6 +110,12 @@ impl From<userdoc::Error> for CmdError {
 impl From<login::Error> for CmdError {
     fn from(source: login::Error) -> Self {
         CmdError::Login { source }
+    }
+}
+
+impl From<logout::Error> for CmdError {
+    fn from(source: logout::Error) -> Self {
+        CmdError::Logout { source }
     }
 }
 
