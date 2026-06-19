@@ -1,10 +1,11 @@
-use crate::{data::simple_message::SimpleMessage, httpclient};
+use crate::{cli::complete::complete_job_name, data::simple_message::SimpleMessage, httpclient};
 
 use super::Context;
 use crate::cli::sink::Error as SinkError;
 
 use clap::{Parser, ValueHint};
 
+use clap_complete::ArgValueCompleter;
 use snafu::{ResultExt, Snafu};
 
 /// Stop a job.
@@ -13,7 +14,7 @@ use snafu::{ResultExt, Snafu};
 #[derive(Parser, Debug)]
 pub struct Input {
     /// The launcher to use for launching the job.
-    #[arg(value_hint=ValueHint::Other)]
+    #[arg(value_hint=ValueHint::Other, add = ArgValueCompleter::new(complete_job_name))]
     pub job_id: String,
 }
 

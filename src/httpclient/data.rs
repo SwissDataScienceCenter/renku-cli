@@ -131,16 +131,22 @@ pub enum SessionState {
     Succeeded,
 }
 
-impl fmt::Display for SessionState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = match self {
+impl SessionState {
+    pub fn to_str(&self) -> &'static str {
+        match self {
             SessionState::Running => "Running",
             SessionState::Starting => "Starting",
             SessionState::Stopping => "Stopping",
             SessionState::Failed => "Failed",
             SessionState::Hibernated => "Hibernated",
             SessionState::Succeeded => "Succeeded",
-        };
+        }
+    }
+}
+
+impl fmt::Display for SessionState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = self.to_str();
         f.write_str(name)
     }
 }

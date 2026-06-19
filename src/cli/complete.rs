@@ -5,7 +5,7 @@ use crate::{
     data::project_id::ProjectId,
     httpclient::{
         Client,
-        data::{SessionLauncher, SessionMode},
+        data::{SessionLauncher, SessionMode, SessionStartResponse},
     },
 };
 
@@ -78,6 +78,35 @@ async fn make_launcher_completion_candidate(
     cc.help(Some(help))
 }
 
+async fn make_job_name_completion_candidate(
+    client: &Client,
+    session: &SessionStartResponse,
+) -> CompletionCandidate {
+    let mut help = StyledStr::new();
+    let cc = CompletionCandidate::new(session.name.clone());
+
+    if let Ok(Some(launcher)) = client.get_launcher(&session.launcher_id).await {
+        help.push_str(&launcher.name);
+        help.push_str("/");
+        help.push_str(session.status.state.to_str());
+    } else {
+        help.push_str(&session.launcher_id);
+        help.push_str("/");
+        help.push_str(session.status.state.to_str());
+        eprintln!("Cannot get launcher for {}", &session.launcher_id);
+    }
+
+    let Ok(Some(project)) = client.get_project_by_id(&session.project_id).await else {
+        eprintln!("Cannot get project details for: {}", session.project_id);
+        return cc.help(Some(help));
+    };
+
+    help.push_str(" - ");
+    help.push_str(&project.name);
+
+    cc.help(Some(help))
+}
+
 async fn resolve_project_id(client: &Client, id: ProjectId) -> Option<String> {
     match client.get_project(&id).await {
         Ok(Some(p)) => Some(p.id),
@@ -120,6 +149,39 @@ pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate
             })
         {
             let cc = make_launcher_completion_candidate(&client, launcher).await;
+            result.push(cc);
+        }
+        if result.is_empty() {
+            eprintln!("No job launchers found.");
+        }
+        result
+    })
+}
+
+/// Complete a job name
+pub fn complete_job_name(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
+    make_sync_completer(current, async |client, opts| {
+        let jobs = match client
+            .list_sessions(Some(SessionMode::NonInteractive))
+            .await
+        {
+            Err(msg) => {
+                eprintln!("Completions failed: Error getting list of jobs: {}", msg);
+                return vec![];
+            }
+            Ok(res) => res,
+        };
+        let mut result: Vec<CompletionCandidate> = vec![];
+        let project_ctx = opts.get_project_context().ok().flatten();
+        let project_id = match project_ctx {
+            Some(id) => resolve_project_id(&client, id).await,
+            None => None,
+        };
+        for job in jobs.0.iter().filter(|e| match &project_id {
+            Some(id) => id == &e.project_id,
+            None => true,
+        }) {
+            let cc = make_job_name_completion_candidate(&client, job).await;
             result.push(cc);
         }
         if result.is_empty() {
