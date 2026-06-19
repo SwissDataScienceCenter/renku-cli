@@ -136,7 +136,7 @@ impl KeyringStore {
         }
     }
 
-    pub fn create(renku_url: RenkuUrl) -> Result<KeyringStore, Error> {
+    pub fn new(renku_url: RenkuUrl) -> Result<KeyringStore, Error> {
         Ok(KeyringStore {
             renku_url,
             store: Self::create_underlying_keyring()?,

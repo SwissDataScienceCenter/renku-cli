@@ -154,7 +154,7 @@ impl Client {
             }
         }
 
-        let keystore = keystore::KeyringStore::create(renku_url.clone()).context(KeystoreSnafu)?;
+        let keystore = keystore::KeyringStore::new(renku_url.clone()).context(KeystoreSnafu)?;
 
         let auth_data = access_token.or(keystore
             .read_token()
