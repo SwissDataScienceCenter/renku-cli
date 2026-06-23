@@ -13,15 +13,15 @@ use snafu::{ResultExt, Snafu};
 /// List the logs of a job.
 #[derive(Parser, Debug)]
 pub struct Input {
-    /// The job name/id to get logs for
+    /// The job name/id to get logs for.
     #[arg(value_hint=ValueHint::Other)]
     pub job_id: String,
 
-    /// Periodically retrieves logs
+    /// Periodically retrieves logs, it will stop when the job finished.
     #[arg(long, short, default_value_t = false)]
     pub follow: bool,
 
-    /// The interval in seconds to wait between calls for logs
+    /// The interval in seconds to wait between calls for logs.
     #[arg(long, default_value_t = 2)]
     pub follow_interval: u8,
 }
@@ -63,8 +63,25 @@ impl Input {
         Ok(seen)
     }
 
+    async fn is_session_finished(&self, ctx: &Context) -> Result<bool, Error> {
+        let details = ctx
+            .client
+            .get_session(&self.job_id)
+            .await
+            .context(HttpClientSnafu)?;
+
+        match &details {
+            None => Ok(true),
+            Some(d) => Ok(!d.status.state.is_running()),
+        }
+    }
+
     async fn follow_logs(&self, ctx: Context) -> Result<(), Error> {
         let mut seen: usize = self.show_logs(&ctx, 0).await?;
+        if self.is_session_finished(&ctx).await? {
+            return Ok(());
+        }
+
         loop {
             tokio::select! {
                 _ = signal::ctrl_c() => {
@@ -73,6 +90,9 @@ impl Input {
                 }
                 _ = sleep(Duration::from_secs(self.follow_interval as u64)) => {
                     seen = self.show_logs(&ctx, seen).await?;
+                    if self.is_session_finished(&ctx).await? {
+                        break Ok(());
+                    }
                 }
             }
         }
