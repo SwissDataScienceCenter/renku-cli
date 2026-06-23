@@ -60,7 +60,7 @@ impl Input {
                 return Ok(lines.len());
             }
         }
-        return Ok(seen);
+        Ok(seen)
     }
 
     async fn follow_logs(&self, ctx: Context) -> Result<(), Error> {
