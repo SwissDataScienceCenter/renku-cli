@@ -408,6 +408,15 @@ impl Client {
         Ok(())
     }
 
+    pub async fn get_session(
+        &self,
+        session_id: &str,
+    ) -> Result<Option<SessionStartResponse>, Error> {
+        let path = format!("/api/data/sessions/{}", session_id);
+        log::debug!("Get session: {}", session_id);
+        self.json_get_option::<SessionStartResponse>(&path).await
+    }
+
     pub async fn list_sessions(&self, mode: Option<SessionMode>) -> Result<SessionList, Error> {
         let url = self.make_url("/api/data/sessions")?;
         log::debug!(

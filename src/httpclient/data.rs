@@ -93,7 +93,8 @@ where
     for r in data {
         let sub_id = r.submission_id.as_deref().unwrap_or("-");
         let started = r.started.format();
-        let data = vec![&r.name, sub_id, &r.project_id, &r.status.state, &started];
+        let status = r.status.state.to_string();
+        let data = vec![&r.name, sub_id, &r.project_id, &status, &started];
         builder.push_record(data);
     }
     builder.insert_record(
@@ -120,20 +121,58 @@ impl fmt::Display for SessionList {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SessionState {
+    Running,
+    Starting,
+    Stopping,
+    Failed,
+    Hibernated,
+    Succeeded,
+}
+
+impl fmt::Display for SessionState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            SessionState::Running => "Running",
+            SessionState::Starting => "Starting",
+            SessionState::Stopping => "Stopping",
+            SessionState::Failed => "Failed",
+            SessionState::Hibernated => "Hibernated",
+            SessionState::Succeeded => "Succeeded",
+        };
+        f.write_str(name)
+    }
+}
+
+impl SessionState {
+    pub fn is_running(&self) -> bool {
+        match self {
+            SessionState::Running => true,
+            SessionState::Starting => true,
+            SessionState::Stopping => true,
+            SessionState::Failed => false,
+            SessionState::Hibernated => false,
+            SessionState::Succeeded => false,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SessionStatus {
-    message: Option<String>,
-    state: String,
+    pub message: Option<String>,
+    pub state: SessionState,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionStartResponse {
-    image: String,
-    name: String,
-    project_id: String,
-    launcher_id: String,
-    submission_id: Option<String>,
-    status: SessionStatus,
-    started: Timestamp,
+    pub image: String,
+    pub name: String,
+    pub project_id: String,
+    pub launcher_id: String,
+    pub submission_id: Option<String>,
+    pub status: SessionStatus,
+    pub started: Timestamp,
 }
 
 impl fmt::Display for SessionStartResponse {
