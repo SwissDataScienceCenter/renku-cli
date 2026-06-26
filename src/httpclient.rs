@@ -460,6 +460,11 @@ impl Client {
         Ok(result)
     }
 
+    pub async fn get_launcher(&self, id: &str) -> Result<Option<SessionLauncher>, Error> {
+        let path = format!("/api/data/session_launchers/{}", id);
+        self.json_get_option::<SessionLauncher>(&path).await
+    }
+
     pub async fn clear_token(&self) -> Result<(), Error> {
         self.keystore.clear_async().await.context(KeystoreSnafu)
     }
