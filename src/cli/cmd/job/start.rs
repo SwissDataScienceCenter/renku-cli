@@ -1,6 +1,6 @@
 use crate::{
-    cli::complete::complete_job_launcher_id,
-    data::submission_id::SubmissionId,
+    cli::{cmd::job::logs, complete::complete_job_launcher_id},
+    data::{simple_message::SimpleMessage, submission_id::SubmissionId},
     httpclient::{self, data::SessionStartRequest},
 };
 
@@ -32,6 +32,10 @@ pub struct Input {
     /// Overwrite the command that is set in the launcher.
     #[arg(long)]
     pub command: Vec<String>,
+
+    /// Start the job and show the logs until it ends or the user cancels with Ctrl-C.
+    #[arg(long, default_value_t = false)]
+    pub wait: bool,
 
     /// These arguments are passed to the renku job command.
     #[arg(trailing_var_arg = true, allow_hyphen_values = true, num_args = 0.., value_name = "ARGS")]
@@ -76,6 +80,24 @@ impl Input {
             .await
             .context(HttpClientSnafu)?;
 
-        ctx.write_result(&result).await.context(WriteResultSnafu)
+        if self.wait {
+            ctx.write_result(&SimpleMessage {
+                message: format!(
+                    "Started job {} (submission_id: {}). Waiting for logs...",
+                    result.name,
+                    result.submission_id.unwrap_or("-".to_string())
+                ),
+            })
+            .await
+            .context(WriteResultSnafu)?;
+            let log_input = logs::Input {
+                job_id: result.name,
+                follow: true,
+                follow_interval: 2,
+            };
+            log_input.follow_logs(ctx).await.context(HttpClientSnafu)
+        } else {
+            ctx.write_result(&result).await.context(WriteResultSnafu)
+        }
     }
 }

@@ -38,19 +38,15 @@ pub enum Error {
 impl Input {
     pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
         if self.follow {
-            self.follow_logs(ctx).await
+            self.follow_logs(ctx).await.context(HttpClientSnafu)
         } else {
-            self.show_logs(&ctx, 0).await?;
+            self.show_logs(&ctx, 0).await.context(HttpClientSnafu)?;
             Ok(())
         }
     }
 
-    async fn show_logs(&self, ctx: &Context, seen: usize) -> Result<usize, Error> {
-        let result = ctx
-            .client
-            .session_logs(&self.job_id)
-            .await
-            .context(HttpClientSnafu)?;
+    async fn show_logs(&self, ctx: &Context, seen: usize) -> Result<usize, httpclient::Error> {
+        let result = ctx.client.session_logs(&self.job_id).await?;
         if let Some(lines_blob) = result.0.get("amalthea-session") {
             let lines: Vec<&str> = lines_blob.lines().collect();
             if lines.len() > seen {
@@ -63,12 +59,8 @@ impl Input {
         Ok(seen)
     }
 
-    async fn is_session_finished(&self, ctx: &Context) -> Result<bool, Error> {
-        let details = ctx
-            .client
-            .get_session(&self.job_id)
-            .await
-            .context(HttpClientSnafu)?;
+    async fn is_session_finished(&self, ctx: &Context) -> Result<bool, httpclient::Error> {
+        let details = ctx.client.get_session(&self.job_id).await?;
 
         match &details {
             None => Ok(true),
@@ -76,7 +68,7 @@ impl Input {
         }
     }
 
-    async fn follow_logs(&self, ctx: Context) -> Result<(), Error> {
+    pub async fn follow_logs(&self, ctx: Context) -> Result<(), httpclient::Error> {
         let mut seen: usize = self.show_logs(&ctx, 0).await?;
         if self.is_session_finished(&ctx).await? {
             return Ok(());
