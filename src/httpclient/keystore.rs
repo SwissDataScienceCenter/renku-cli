@@ -1,13 +1,13 @@
 use std::{path::PathBuf, sync::Arc};
 
+use crate::data::renku_url::RenkuUrl;
 use db_keystore::{DbKeyStore, DbKeyStoreConfig};
 use directories::ProjectDirs;
 use keyring_core::{self, CredentialStore};
 use log;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
-
-use crate::data::renku_url::RenkuUrl;
+use tokio::task;
 
 use super::auth::Response;
 
@@ -35,22 +35,17 @@ pub enum Error {
     FromJson { source: serde_json::Error },
 }
 
-/// Sets the global default keyring store for the underlying keyring library.
-pub fn set_default_global_keyring_store() -> Result<bool, Error> {
-    if keyring_core::get_default_store().is_some() {
-        log::debug!("A keystore has already been configured");
-        return Ok(false);
-    }
-    let ks = KeyringStore::create_underlying_keyring()?;
-    keyring_core::set_default_store(ks);
-    Ok(true)
-}
-
 /// Keystore api used with the renku http client.
 pub trait Keystore {
     fn write_token(&self, token: &Response) -> Result<(), Error>;
     fn read_token(&self) -> Result<Option<Response>, Error>;
     fn clear(&self) -> Result<(), Error>;
+}
+
+pub trait AsyncKeystore {
+    fn write_token_async(&self, token: &Response) -> impl Future<Output = Result<(), Error>>;
+    fn read_token_async(&self) -> impl Future<Output = Result<Option<Response>, Error>>;
+    fn clear_async(&self) -> impl Future<Output = Result<(), Error>>;
 }
 
 pub struct KeyringStore {
@@ -145,7 +140,20 @@ impl KeyringStore {
 
     fn build_entry(&self) -> Result<keyring_core::Entry, Error> {
         let service = self.renku_url.as_url().domain().unwrap_or("renku");
-        let user = whoami::account().unwrap_or_else(|_| "default-user".to_string());
+        let user = whoami::username().unwrap_or_else(|_| "default-user".to_string());
+        self.store
+            .as_ref()
+            .build(service, &user, None)
+            .context(BuildEntrySnafu)
+    }
+
+    async fn build_entry_async(&self) -> Result<keyring_core::Entry, Error> {
+        let service = self.renku_url.as_url().domain().unwrap_or("renku");
+        let user = task::spawn_blocking(|| {
+            whoami::username().unwrap_or_else(|_| "default-user".to_string())
+        })
+        .await
+        .unwrap();
         self.store
             .as_ref()
             .build(service, &user, None)
@@ -180,6 +188,41 @@ impl Keystore for KeyringStore {
             Err(keyring_core::Error::NoEntry) => Ok(()),
             Err(err) => Err(Error::WriteSecret { source: err }),
         }
+    }
+}
+
+impl AsyncKeystore for KeyringStore {
+    async fn write_token_async(&self, token: &Response) -> Result<(), Error> {
+        let entry = self.build_entry_async().await?;
+        let cnt = serde_json::to_vec(token).context(ToJsonSnafu)?;
+        task::spawn_blocking(move || entry.set_secret(&cnt).context(WriteSecretSnafu))
+            .await
+            .unwrap()
+    }
+
+    async fn read_token_async(&self) -> Result<Option<Response>, Error> {
+        let entry = self.build_entry_async().await?;
+        task::spawn_blocking(move || match entry.get_secret() {
+            Ok(secret) => {
+                let resp = serde_json::from_slice::<Response>(&secret).context(FromJsonSnafu)?;
+                Ok(Some(resp))
+            }
+            Err(keyring_core::Error::NoEntry) => Ok(None),
+            Err(err) => Err(Error::ReadSecret { source: err }),
+        })
+        .await
+        .unwrap()
+    }
+
+    async fn clear_async(&self) -> Result<(), Error> {
+        let entry = self.build_entry_async().await?;
+        task::spawn_blocking(move || match entry.delete_credential() {
+            Ok(()) => Ok(()),
+            Err(keyring_core::Error::NoEntry) => Ok(()),
+            Err(err) => Err(Error::WriteSecret { source: err }),
+        })
+        .await
+        .unwrap()
     }
 }
 

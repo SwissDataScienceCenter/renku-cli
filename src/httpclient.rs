@@ -34,7 +34,7 @@ use crate::data::renku_url::RenkuUrl;
 
 use self::data::*;
 use auth::{Response, UserCode};
-use keystore::{KeyringStore, Keystore};
+use keystore::{AsyncKeystore, KeyringStore};
 use openidconnect::OAuth2TokenResponse;
 use regex::Regex;
 use reqwest::{Certificate, ClientBuilder, IntoUrl, RequestBuilder, Url};
@@ -156,14 +156,10 @@ impl Client {
 
         let keystore = keystore::KeyringStore::new(renku_url.clone()).context(KeystoreSnafu)?;
 
-        let auth_data = access_token.or(keystore
-            .read_token()
-            .context(KeystoreSnafu)?
-            .map(|r| r.response.access_token().secret().clone()));
         let client = client_builder.build().context(ClientCreateSnafu)?;
         Ok(Client {
             client,
-            access_token: auth_data,
+            access_token,
             settings: Settings {
                 proxy,
                 trusted_certificate,
@@ -186,10 +182,22 @@ impl Client {
             .context(UrlParseSnafu)
     }
 
-    fn set_bearer_token(&self, b: RequestBuilder) -> RequestBuilder {
+    async fn get_access_token(&self) -> Result<Option<String>, Error> {
         match &self.access_token {
-            Some(token) => b.bearer_auth(token),
-            None => b,
+            Some(t) => Ok(Some(t.to_string())),
+            None => Ok(self
+                .keystore
+                .read_token_async()
+                .await
+                .context(KeystoreSnafu)?
+                .map(|r| r.response.access_token().secret().clone())),
+        }
+    }
+
+    async fn set_bearer_token(&self, b: RequestBuilder) -> Result<RequestBuilder, Error> {
+        match self.get_access_token().await? {
+            Some(token) => Ok(b.bearer_auth(token)),
+            None => Ok(b),
         }
     }
 
@@ -224,7 +232,7 @@ impl Client {
     async fn json_get<R: DeserializeOwned>(&self, path: &str) -> Result<R, Error> {
         let url = self.make_url(path)?;
         log::debug!("JSON GET: {}", url);
-        let req = self.set_bearer_token(self.client.get(url.clone()));
+        let req = self.set_bearer_token(self.client.get(url.clone())).await?;
         self.run_request(req, url).await
     }
 
@@ -237,6 +245,7 @@ impl Client {
         let url = self.make_url(path)?;
         let req = self
             .set_bearer_token(self.client.post(url.clone()))
+            .await?
             .json::<I>(body);
         self.run_request(req, url).await
     }
@@ -247,7 +256,7 @@ impl Client {
     /// expected structure.
     async fn json_get_option<R: DeserializeOwned>(&self, path: &str) -> Result<Option<R>, Error> {
         let url = self.make_url(path)?;
-        let req = self.set_bearer_token(self.client.get(url.clone()));
+        let req = self.set_bearer_token(self.client.get(url.clone())).await?;
 
         let result = self.run_request(req, url).await;
         match result {
@@ -392,6 +401,7 @@ impl Client {
         let path = format!("/api/data/sessions/{}", session_id);
         let url = self.make_url(&path)?;
         self.set_bearer_token(self.client.delete(url.clone()))
+            .await?
             .send()
             .await
             .context(HttpSnafu { url })?;
@@ -405,7 +415,7 @@ impl Client {
             url,
             mode.as_ref().map_or("", |e| e.to_query_param())
         );
-        let mut req = self.set_bearer_token(self.client.get(url.clone()));
+        let mut req = self.set_bearer_token(self.client.get(url.clone())).await?;
         if let Some(m) = mode {
             req = req.query(&[("session_type", m.to_query_param())])
         }
@@ -428,7 +438,10 @@ impl Client {
 
     pub async fn complete_login_flow(&self, code: UserCode) -> Result<Response, Error> {
         let r = auth::poll_tokens(code).await?;
-        self.keystore.write_token(&r).context(KeystoreSnafu)?;
+        self.keystore
+            .write_token_async(&r)
+            .await
+            .context(KeystoreSnafu)?;
         Ok(r)
     }
 
@@ -439,6 +452,6 @@ impl Client {
     }
 
     pub async fn clear_token(&self) -> Result<(), Error> {
-        self.keystore.clear().context(KeystoreSnafu)
+        self.keystore.clear_async().await.context(KeystoreSnafu)
     }
 }
