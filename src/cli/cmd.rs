@@ -11,6 +11,7 @@ pub mod version;
 use super::sink::{Error as SinkError, Sink};
 use crate::cli::opts::CommonOpts;
 use crate::data::renku_url::RenkuUrl;
+use crate::httpclient::data::ProjectDetails;
 use crate::httpclient::{self, Client};
 use serde::Serialize;
 use snafu::{ResultExt, Snafu};
@@ -43,6 +44,18 @@ impl Context {
     async fn write_err<A: Sink + Serialize>(&self, value: &A) -> Result<(), SinkError> {
         let fmt = self.opts.format;
         Sink::write_err(&fmt, value)
+    }
+
+    pub async fn resolve_project_context(
+        &self,
+    ) -> Result<Option<ProjectDetails>, httpclient::Error> {
+        match self.opts.get_project_context() {
+            Ok(Some(id)) => self.client.get_project(&id).await,
+            Ok(None) => Ok(None),
+            Err(err) => Err(httpclient::Error::ProjectUrlParse {
+                reason: format!("{}", err),
+            }),
+        }
     }
 }
 
