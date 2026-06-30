@@ -84,6 +84,22 @@ impl fmt::Display for SessionStartRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionList(pub Vec<SessionStartResponse>);
+impl SessionList {
+    pub fn filter<F>(self, f: F) -> SessionList
+    where
+        F: Fn(&SessionStartResponse) -> bool,
+    {
+        let l: Vec<SessionStartResponse> = self.0.into_iter().filter(|v| f(v)).collect();
+        SessionList(l)
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: Fn(&SessionStartResponse) -> bool,
+    {
+        self.0.retain(|v| f(v));
+    }
+}
 
 fn create_session_table<'a, I>(data: I) -> Table
 where
@@ -93,8 +109,8 @@ where
     for r in data {
         let sub_id = r.submission_id.as_deref().unwrap_or("-");
         let started = r.started.format();
-        let status = r.status.state.to_string();
-        let data = vec![&r.name, sub_id, &r.project_id, &status, &started];
+        let status = r.status.state.to_str();
+        let data = vec![&r.name, sub_id, &r.project_id, status, &started];
         builder.push_record(data);
     }
     builder.insert_record(
@@ -132,26 +148,6 @@ pub enum SessionState {
 }
 
 impl SessionState {
-    pub fn to_str(&self) -> &'static str {
-        match self {
-            SessionState::Running => "Running",
-            SessionState::Starting => "Starting",
-            SessionState::Stopping => "Stopping",
-            SessionState::Failed => "Failed",
-            SessionState::Hibernated => "Hibernated",
-            SessionState::Succeeded => "Succeeded",
-        }
-    }
-}
-
-impl fmt::Display for SessionState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = self.to_str();
-        f.write_str(name)
-    }
-}
-
-impl SessionState {
     pub fn is_running(&self) -> bool {
         match self {
             SessionState::Running => true,
@@ -161,6 +157,22 @@ impl SessionState {
             SessionState::Hibernated => false,
             SessionState::Succeeded => false,
         }
+    }
+    pub fn to_str(&self) -> &'static str {
+        match self {
+            SessionState::Failed => "Failed",
+            SessionState::Hibernated => "Hibernated",
+            SessionState::Running => "Running",
+            SessionState::Starting => "Starting",
+            SessionState::Stopping => "Stopping",
+            SessionState::Succeeded => "Succeeded",
+        }
+    }
+}
+
+impl fmt::Display for SessionState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.to_str())
     }
 }
 
