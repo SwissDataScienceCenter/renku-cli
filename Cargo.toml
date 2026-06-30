@@ -21,7 +21,7 @@ env_logger = { version = "0.11.5" }
 log = { version = "0.4.22" }
 openssl = { version = "0.10.75", optional = true }
 rand = { version = "0.10" }
-reqwest = { version = "0.12.28", default-features = false, features = [
+reqwest = { version = "0.13.4", default-features = false, features = [
   "json",
   "multipart",
   "stream",
@@ -86,7 +86,7 @@ zbus-secret-service-keyring-store = { version = "1.0.0", features = ["crypto-rus
 [features]
 default = ["reqwest/default-tls"] # link against system library
 rustls = [
-  "reqwest/rustls-tls",
+  "reqwest/rustls",
   "openidconnect/rustls-tls",
   "self_update/rustls",
 ] # include rustls, ssl library written in rust

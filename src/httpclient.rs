@@ -418,16 +418,17 @@ impl Client {
     }
 
     pub async fn list_sessions(&self, mode: Option<SessionMode>) -> Result<SessionList, Error> {
-        let url = self.make_url("/api/data/sessions")?;
+        let mut url = self.make_url("/api/data/sessions")?;
+        if let Some(m) = &mode {
+            url.query_pairs_mut()
+                .append_pair("session_type", m.to_query_param());
+        }
         log::debug!(
             "List sessions: {}?session_mode={}",
             url,
             mode.as_ref().map_or("", |e| e.to_query_param())
         );
-        let mut req = self.set_bearer_token(self.client.get(url.clone())).await?;
-        if let Some(m) = mode {
-            req = req.query(&[("session_type", m.to_query_param())])
-        }
+        let req = self.set_bearer_token(self.client.get(url.clone())).await?;
 
         self.run_request::<Vec<SessionStartResponse>>(req, url)
             .await
