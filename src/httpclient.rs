@@ -442,12 +442,12 @@ impl Client {
     }
 
     pub async fn start_login_flow(&self) -> Result<UserCode, Error> {
-        let c = auth::get_user_code(self.settings.base_url.clone()).await?;
+        let c = auth::get_user_code(&self.client, self.settings.base_url.clone()).await?;
         Ok(c)
     }
 
     pub async fn complete_login_flow(&self, code: UserCode) -> Result<Response, Error> {
-        let r = auth::poll_tokens(code).await?;
+        let r = auth::poll_tokens(&self.client, code).await?;
         self.keystore
             .write_token_async(&r)
             .await

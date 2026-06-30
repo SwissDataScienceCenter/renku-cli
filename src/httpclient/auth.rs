@@ -4,7 +4,6 @@ use crate::data::renku_url::RenkuUrl;
 use ::reqwest as rqw;
 use iso8601_timestamp::{Duration, Timestamp};
 use openidconnect::core::*;
-use openidconnect::reqwest::async_http_client;
 use openidconnect::*;
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
@@ -24,9 +23,6 @@ type DeviceProviderMetadata = ProviderMetadata<
     CoreGrantType,
     CoreJweContentEncryptionAlgorithm,
     CoreJweKeyManagementAlgorithm,
-    CoreJwsSigningAlgorithm,
-    CoreJsonWebKeyType,
-    CoreJsonWebKeyUse,
     CoreJsonWebKey,
     CoreResponseMode,
     CoreResponseType,
@@ -40,7 +36,6 @@ pub type TokenResponse = StandardTokenResponse<
         CoreGenderClaim,
         CoreJweContentEncryptionAlgorithm,
         CoreJwsSigningAlgorithm,
-        CoreJsonWebKeyType,
     >,
     CoreTokenType,
 >;
@@ -98,7 +93,7 @@ pub enum AuthError {
 
     #[snafu(display("Error retrieving authentication provider metadata: {}", source))]
     Discover {
-        source: DiscoveryError<oauth2::reqwest::AsyncHttpClientError>,
+        source: DiscoveryError<HttpClientError<rqw::Error>>,
     },
 
     #[snafu(display("Error exchanging tokens: {}", message))]
@@ -108,11 +103,14 @@ pub enum AuthError {
 const CLIENT_ID: &str = "renku-cli";
 const REALM_PATH: &str = "auth/realms/Renku";
 
-pub async fn get_user_code(renku_url: RenkuUrl) -> Result<UserCode, AuthError> {
+pub async fn get_user_code(
+    http_client: &rqw::Client,
+    renku_url: RenkuUrl,
+) -> Result<UserCode, AuthError> {
     let issuer_url =
         IssuerUrl::from_url(renku_url.as_url().join(REALM_PATH).context(UrlParseSnafu)?);
 
-    let metadata = DeviceProviderMetadata::discover_async(issuer_url, async_http_client)
+    let metadata = DeviceProviderMetadata::discover_async(issuer_url, http_client)
         .await
         .map_err(|e| AuthError::Discover { source: e })?;
 
@@ -127,13 +125,12 @@ pub async fn get_user_code(renku_url: RenkuUrl) -> Result<UserCode, AuthError> {
         .clone();
     let client =
         CoreClient::from_provider_metadata(metadata.clone(), ClientId::new(CLIENT_ID.into()), None)
-            .set_device_authorization_uri(device_url)
+            .set_device_authorization_url(device_url)
             .set_auth_type(AuthType::RequestBody);
 
     let details: CoreDeviceAuthorizationResponse = client
         .exchange_device_code()
-        .unwrap()
-        .request_async(async_http_client)
+        .request_async(http_client)
         .await
         .unwrap();
 
@@ -152,7 +149,7 @@ pub async fn get_user_code(renku_url: RenkuUrl) -> Result<UserCode, AuthError> {
     })
 }
 
-pub async fn poll_tokens(code: UserCode) -> Result<Response, AuthError> {
+pub async fn poll_tokens(http_client: &rqw::Client, code: UserCode) -> Result<Response, AuthError> {
     let device_url = code
         .metadata
         .additional_metadata()
@@ -160,14 +157,15 @@ pub async fn poll_tokens(code: UserCode) -> Result<Response, AuthError> {
         .clone();
     let client =
         CoreClient::from_provider_metadata(code.metadata, ClientId::new(CLIENT_ID.into()), None)
-            .set_device_authorization_uri(device_url)
+            .set_device_authorization_url(device_url)
             .set_auth_type(AuthType::RequestBody);
 
     Ok(Response {
         created_at: Timestamp::now_utc(),
         response: client
             .exchange_device_access_token(&code.device_auth_resp)
-            .request_async(async_http_client, tokio::time::sleep, None)
+            .unwrap()
+            .request_async(http_client, tokio::time::sleep, None)
             .await
             .map_err(|e| AuthError::CodeExchange {
                 message: format!("{}", e),
