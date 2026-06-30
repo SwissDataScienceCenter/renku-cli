@@ -173,7 +173,7 @@ async fn clone_repository(
             let head = git_repo
                 .head()
                 .ok()
-                .and_then(|r| r.name().map(str::to_string));
+                .and_then(|r| r.name().ok().map(str::to_string));
             log::debug!("Checked out ref {:?} for repo {}", head, repo_url);
         }
 
