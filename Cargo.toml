@@ -100,12 +100,10 @@ assert_cmd = "2.0.16"
 predicates = "3.1.2"
 
 [build-dependencies]
-vergen = { version = "8.3.2", features = [
+vergen-gitcl = { version = "9.1.0", features = [
   "build",
-  "git",
-  "gitcl",
-  "rustc",
   "cargo",
+  "rustc",
 ] }
 
 [profile.release]
