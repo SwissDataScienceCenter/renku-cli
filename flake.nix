@@ -51,6 +51,9 @@
         inherit version;
         strictDeps = true;
 
+        env = {
+          VERGEN_GIT_SHA = self.rev or (self.dirtyRev or "unknown");
+        };
         nativeBuildInputs = [
           pkgs.pkg-config
         ];
