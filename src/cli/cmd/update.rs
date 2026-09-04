@@ -29,13 +29,13 @@ fn update() -> Result<UpdateResult, Error> {
     match result {
         Ok(status) => {
             let version = status.version().to_owned();
-            if status.updated() {
+            if status.is_updated() {
                 Ok(UpdateResult::Updated(version))
             } else {
                 Ok(UpdateResult::AlreadyUpToDate(version))
             }
         }
-        Err(SelfUpdateError::Update(msg)) if msg == "Update aborted" => Ok(UpdateResult::Aborted),
+        Err(SelfUpdateError::Aborted) => Ok(UpdateResult::Aborted),
         Err(e) => Err(Error::Update { source: e }),
     }
 }

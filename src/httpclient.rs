@@ -327,7 +327,7 @@ impl Client {
         base.set_path("");
         let base_url = RenkuUrl::new(base);
 
-        log::debug!("Get project by url: {}", &url);
+        log::debug!("Get project by url: {}", url);
         // there are different urls identifying the project
         //   /v2/projects/<id> (ui)
         //   /v2/projects/<namespace>/<slug> (ui)
@@ -341,7 +341,7 @@ impl Client {
         .unwrap();
         let captures = project_path_regex.captures(url.path()).unwrap();
 
-        log::debug!("Create temporary client for {}", &base_url);
+        log::debug!("Create temporary client for {}", base_url);
         let client = Client::new(
             base_url,
             self.settings.proxy.clone(),

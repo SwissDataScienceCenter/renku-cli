@@ -230,13 +230,13 @@ async fn process_markdown_file(
         let node_data = node.data.borrow();
         if let NodeValue::CodeBlock(ref cc) = node_data.value {
             let command = &cc.literal;
-            log::debug!("Process code block: {}", &cc.info);
+            log::debug!("Process code block: {}", cc.info);
             match parse_fence_info(&cc.info) {
                 None => {
-                    log::debug!("Code block not processed: {}", &cc.info);
+                    log::debug!("Code block not processed: {}", cc.info);
                 }
                 Some(FenceModifier::Default) => {
-                    log::debug!("Run code block and insert result for: {}", &cc.info);
+                    log::debug!("Run code block and insert result for: {}", cc.info);
                     let cli_out = run_cli_command(cli_binary, command)?;
                     let nn = src_nodes.alloc(AstNode::new(RefCell::new(Ast::new(
                         make_code_block(result_marker, cli_out),
@@ -245,7 +245,7 @@ async fn process_markdown_file(
                     node.insert_after(nn);
                 }
                 Some(FenceModifier::Silent) => {
-                    log::debug!("Run code block and ignore result for: {}", &cc.info);
+                    log::debug!("Run code block and ignore result for: {}", cc.info);
                     run_cli_command(cli_binary, command)?;
                 }
             }
