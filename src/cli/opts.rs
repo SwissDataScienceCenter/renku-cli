@@ -164,6 +164,8 @@ pub enum SubCommand {
 
     #[command()]
     Job(job::Input),
+    #[command()]
+    Launcher(launcher::Input),
 
     #[command()]
     Logout(logout::Input),
