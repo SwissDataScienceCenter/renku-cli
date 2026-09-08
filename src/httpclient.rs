@@ -455,10 +455,10 @@ impl Client {
         Ok(r)
     }
 
-    pub async fn list_launchers(&self) -> Result<Vec<SessionLauncher>, Error> {
+    pub async fn list_launchers(&self) -> Result<LauncherList, Error> {
         let path = "/api/data/session_launchers";
         let result = self.json_get::<Vec<SessionLauncher>>(path).await?;
-        Ok(result)
+        Ok(LauncherList(result))
     }
 
     pub async fn get_launcher(&self, id: &str) -> Result<Option<SessionLauncher>, Error> {
