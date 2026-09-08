@@ -81,6 +81,52 @@ impl fmt::Display for SessionStartRequest {
         )
     }
 }
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LauncherList(pub Vec<SessionLauncher>);
+impl LauncherList {
+    pub fn filter<F>(self, f: F) -> LauncherList
+    where
+        F: Fn(&SessionLauncher) -> bool,
+    {
+        let l: Vec<SessionLauncher> = self.0.into_iter().filter(|v| f(v)).collect();
+        LauncherList(l)
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: Fn(&SessionLauncher) -> bool,
+    {
+        self.0.retain(|v| f(v));
+    }
+}
+fn create_launcher_table<'a, I>(data: I) -> Table
+where
+    I: IntoIterator<Item = &'a SessionLauncher>,
+{
+    let mut builder = Builder::default();
+    for r in data {
+        let data = vec![&r.name, r.id.as_str(), &r.project_id];
+        builder.push_record(data);
+    }
+    builder.insert_record(0, vec!["Launcher", "Id", "Project Id"]);
+
+    let mut table = builder.build();
+    let settings = Settings::default().with(Style::sharp());
+
+    table.with(settings);
+    table
+}
+
+impl fmt::Display for LauncherList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_empty() {
+            write!(f, "No launchers found.")
+        } else {
+            let table = create_launcher_table(&self.0);
+            write!(f, "{}", table)
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionList(pub Vec<SessionStartResponse>);

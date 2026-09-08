@@ -63,5 +63,6 @@ impl Sink for UserCode {}
 impl Sink for Response {}
 impl Sink for SessionStartResponse {}
 impl Sink for SessionList {}
+impl Sink for LauncherList {}
 impl Sink for SessionLogs {}
 impl Sink for VersionInfo {}
