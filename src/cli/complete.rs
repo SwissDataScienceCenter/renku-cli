@@ -62,20 +62,22 @@ fn parse_common_opts() -> Result<CommonOpts, ClapError> {
 async fn make_launcher_completion_candidate(
     client: &Client,
     launcher: &SessionLauncher,
-) -> CompletionCandidate {
+) -> Vec<CompletionCandidate> {
     let mut help = StyledStr::new();
     help.push_str(&launcher.name);
-    let cc = CompletionCandidate::new(launcher.id.clone());
+    let cc = vec![
+        CompletionCandidate::new(launcher.id.clone()),
+        CompletionCandidate::new(launcher.name.clone()),
+    ];
 
-    let Ok(Some(project)) = client.get_project_by_id(&launcher.project_id).await else {
+    if let Ok(Some(project)) = client.get_project_by_id(&launcher.project_id).await {
+        help.push_str(" - ");
+        help.push_str(&project.name);
+    } else {
         eprintln!("Cannot get project details for: {}", launcher.project_id);
-        return cc.help(Some(help));
-    };
+    }
 
-    help.push_str(" - ");
-    help.push_str(&project.name);
-
-    cc.help(Some(help))
+    cc.into_iter().map(|c| c.help(Some(help.clone()))).collect()
 }
 
 async fn make_job_name_completion_candidate(
@@ -149,7 +151,7 @@ pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate
             })
         {
             let cc = make_launcher_completion_candidate(&client, launcher).await;
-            result.push(cc);
+            result.extend(cc);
         }
         if result.is_empty() {
             eprintln!("No job launchers found.");

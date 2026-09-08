@@ -1,6 +1,10 @@
 use crate::{
     cli::{cmd::job::logs, complete::complete_job_launcher_id},
-    data::{simple_message::SimpleMessage, submission_id::SubmissionId},
+    data::{
+        launcher_id::{LauncherIdError, LauncherIdOrName},
+        simple_message::SimpleMessage,
+        submission_id::SubmissionId,
+    },
     httpclient::{self, data::SessionStartRequest},
 };
 
@@ -9,7 +13,6 @@ use crate::cli::sink::Error as SinkError;
 
 use clap::{Parser, ValueHint};
 use clap_complete::ArgValueCompleter;
-use ulid::Ulid;
 
 use snafu::{ResultExt, Snafu};
 
@@ -20,7 +23,7 @@ use snafu::{ResultExt, Snafu};
 pub struct Input {
     /// The launcher to use for launching the job.
     #[arg(long, value_hint=ValueHint::Other, add = ArgValueCompleter::new(complete_job_launcher_id))]
-    pub launcher: Ulid,
+    pub launcher: LauncherIdOrName,
 
     /// A submission id allows to deduplicate same job submissions. If
     /// missing, a random one is generated. It must be at least 4
@@ -49,6 +52,9 @@ pub enum Error {
 
     #[snafu(display("Http error: {}", source))]
     HttpClient { source: httpclient::Error },
+
+    #[snafu(display("Launcher id error: {}", source))]
+    LauncherId { source: LauncherIdError },
 }
 
 impl Input {
@@ -67,8 +73,13 @@ impl Input {
         } else {
             Some(self.passthrough.clone())
         };
+        let launcher_id = self
+            .launcher
+            .resolve(&ctx.client)
+            .await
+            .context(LauncherIdSnafu)?;
         let req = SessionStartRequest {
-            launcher_id: self.launcher.to_string(),
+            launcher_id: launcher_id.to_string(),
             session_type: "non-interactive".into(),
             submission_id: Some(submission_id),
             job_args_override: args,

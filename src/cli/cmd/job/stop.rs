@@ -13,7 +13,7 @@ use snafu::{ResultExt, Snafu};
 /// Stop a running non-interactive session.
 #[derive(Parser, Debug)]
 pub struct Input {
-    /// The launcher to use for launching the job.
+    /// The id of the job to stop
     #[arg(value_hint=ValueHint::Other, add = ArgValueCompleter::new(complete_job_name))]
     pub job_id: String,
 }
