@@ -134,7 +134,7 @@ pub async fn get_user_code(
         .await
         .unwrap();
 
-    log::debug!("DeviceAuthResponse: {:?}", &details);
+    log::debug!("DeviceAuthResponse: {:?}", details);
 
     let verify_url_str = details
         .verification_uri_complete()

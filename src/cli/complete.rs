@@ -93,7 +93,7 @@ async fn make_job_name_completion_candidate(
         help.push_str(&session.launcher_id);
         help.push_str("/");
         help.push_str(session.status.state.to_str());
-        eprintln!("Cannot get launcher for {}", &session.launcher_id);
+        eprintln!("Cannot get launcher for {}", session.launcher_id);
     }
 
     let Ok(Some(project)) = client.get_project_by_id(&session.project_id).await else {

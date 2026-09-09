@@ -86,7 +86,7 @@ impl Input {
                     "Cloning {} ({}) into {}...",
                     details.slug,
                     details.id,
-                    &target.display()
+                    target.display()
                 ),
             })
             .await
@@ -98,7 +98,7 @@ impl Input {
             ctx.write_result(&details).await.context(WriteResultSnafu)?;
         } else {
             ctx.write_err(&SimpleMessage {
-                message: format!("Project '{}' doesn't exist.", &self.project_ref),
+                message: format!("Project '{}' doesn't exist.", self.project_ref),
             })
             .await
             .context(WriteResultSnafu)?;
