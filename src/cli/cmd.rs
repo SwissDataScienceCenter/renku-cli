@@ -1,5 +1,6 @@
 pub mod dataset;
 pub mod job;
+pub mod launcher;
 pub mod login;
 pub mod logout;
 pub mod project;
@@ -85,6 +86,8 @@ pub enum CmdError {
 
     #[snafu(display("Job - {}", source))]
     Job { source: job::Error },
+    #[snafu(display("Launcher - {}", source))]
+    Launcher { source: launcher::Error },
 
     #[snafu(display("Logout - {}", source))]
     Logout { source: logout::Error },
@@ -93,6 +96,11 @@ pub enum CmdError {
 impl From<job::Error> for CmdError {
     fn from(source: job::Error) -> Self {
         CmdError::Job { source }
+    }
+}
+impl From<launcher::Error> for CmdError {
+    fn from(source: launcher::Error) -> Self {
+        CmdError::Launcher { source }
     }
 }
 

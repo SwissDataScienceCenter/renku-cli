@@ -362,6 +362,16 @@ impl Client {
             })
         }
     }
+    pub async fn list_projects(&self, direct_member: bool) -> Result<ProjectList, Error> {
+        let mut url = self.make_url("/api/data/projects")?;
+        url.query_pairs_mut()
+            .append_pair("direct_member", &direct_member.to_string());
+        let req = self.set_bearer_token(self.client.get(url.clone())).await?;
+
+        self.run_request::<Vec<ProjectDetails>>(req, url)
+            .await
+            .map(ProjectList)
+    }
 
     pub async fn get_namespace(
         &self,
@@ -455,10 +465,10 @@ impl Client {
         Ok(r)
     }
 
-    pub async fn list_launchers(&self) -> Result<Vec<SessionLauncher>, Error> {
+    pub async fn list_launchers(&self) -> Result<LauncherList, Error> {
         let path = "/api/data/session_launchers";
         let result = self.json_get::<Vec<SessionLauncher>>(path).await?;
-        Ok(result)
+        Ok(LauncherList(result))
     }
 
     pub async fn get_launcher(&self, id: &str) -> Result<Option<SessionLauncher>, Error> {
