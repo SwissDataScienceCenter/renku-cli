@@ -10,7 +10,7 @@ pub enum Error {
     List { source: list::Error },
 }
 
-/// Sub command for managing projects
+/// Sub command for managing launchers
 #[derive(Parser, Debug)]
 pub struct Input {
     #[command(subcommand)]

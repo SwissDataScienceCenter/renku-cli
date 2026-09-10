@@ -337,6 +337,54 @@ impl fmt::Display for ProjectDetails {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct ProjectList(pub Vec<ProjectDetails>);
+impl ProjectList {
+    pub fn filter<F>(self, f: F) -> ProjectList
+    where
+        F: Fn(&ProjectDetails) -> bool,
+    {
+        let l: Vec<ProjectDetails> = self.0.into_iter().filter(|v| f(v)).collect();
+        ProjectList(l)
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: Fn(&ProjectDetails) -> bool,
+    {
+        self.0.retain(|v| f(v));
+    }
+}
+
+fn create_project_table<'a, I>(data: I) -> Table
+where
+    I: IntoIterator<Item = &'a ProjectDetails>,
+{
+    let mut builder = Builder::default();
+    for r in data {
+        let data = vec![&r.name, r.id.as_str(), &r.namespace, &r.slug];
+        builder.push_record(data);
+    }
+    builder.insert_record(0, vec!["Project", "Id", "Namespace", "Slug"]);
+
+    let mut table = builder.build();
+    let settings = Settings::default().with(Style::sharp());
+
+    table.with(settings);
+    table
+}
+
+impl fmt::Display for ProjectList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_empty() {
+            write!(f, "No projects found.")
+        } else {
+            let table = create_project_table(&self.0);
+            write!(f, "{}", table)
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RenkuError {
     pub code: i32,
     pub message: String,

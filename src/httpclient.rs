@@ -362,6 +362,16 @@ impl Client {
             })
         }
     }
+    pub async fn list_projects(&self, direct_member: bool) -> Result<ProjectList, Error> {
+        let mut url = self.make_url("/api/data/projects")?;
+        url.query_pairs_mut()
+            .append_pair("direct_member", &direct_member.to_string());
+        let req = self.set_bearer_token(self.client.get(url.clone())).await?;
+
+        self.run_request::<Vec<ProjectDetails>>(req, url)
+            .await
+            .map(ProjectList)
+    }
 
     pub async fn get_namespace(
         &self,

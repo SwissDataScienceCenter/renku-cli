@@ -56,6 +56,7 @@ impl From<serde_json::Error> for Error {
 }
 
 impl Sink for ProjectDetails {}
+impl Sink for ProjectList {}
 impl Sink for SimpleMessage {}
 impl Sink for BuildInfo {}
 impl Sink for PathEntry {}
