@@ -17,7 +17,7 @@ pub enum Error {
     Deposit { source: deposit::Error },
 }
 
-/// Sub command for managing datasets
+/// Sub command for managing datasets [alias: d]
 #[derive(Parser, Debug)]
 pub struct Input {
     #[command(subcommand)]

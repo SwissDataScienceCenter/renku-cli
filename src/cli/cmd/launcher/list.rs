@@ -8,7 +8,7 @@ use clap::Parser;
 
 use snafu::{ResultExt, Snafu};
 
-/// Listing launchers.
+/// Listing launchers [alias: ls].
 ///
 /// List currently running launchers.
 #[derive(Parser, Debug)]

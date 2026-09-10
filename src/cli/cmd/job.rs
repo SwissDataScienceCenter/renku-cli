@@ -22,7 +22,7 @@ pub enum Error {
     Logs { source: logs::Error },
 }
 
-/// Sub command for managing projects
+/// Sub command for managing projects [alias: j]
 #[derive(Parser, Debug)]
 pub struct Input {
     #[command(subcommand)]
@@ -48,7 +48,7 @@ pub enum JobCommand {
     #[command()]
     Stop(stop::Input),
 
-    #[command()]
+    #[command(alias = "ls")]
     List(list::Input),
 
     #[command()]
