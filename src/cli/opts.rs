@@ -146,7 +146,7 @@ pub enum SubCommand {
     #[command()]
     Update(update::Input),
 
-    #[command()]
+    #[command(alias = "p")]
     Project(project::Input),
 
     /// Clone a project. (Shortcut for 'project clone')
@@ -159,12 +159,12 @@ pub enum SubCommand {
     #[cfg(feature = "user-doc")]
     UserDoc(userdoc::Input),
 
-    #[command()]
+    #[command(alias = "d")]
     Dataset(dataset::Input),
 
-    #[command()]
+    #[command(alias = "j")]
     Job(job::Input),
-    #[command()]
+    #[command(alias = "l")]
     Launcher(launcher::Input),
 
     #[command()]

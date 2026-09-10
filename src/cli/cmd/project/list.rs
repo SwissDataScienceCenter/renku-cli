@@ -8,7 +8,7 @@ use clap::Parser;
 
 use snafu::{ResultExt, Snafu};
 
-/// Listing projects.
+/// Listing projects [alias: ls].
 ///
 /// List all projects owned by a user
 #[derive(Parser, Debug)]
