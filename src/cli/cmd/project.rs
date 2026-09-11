@@ -1,3 +1,4 @@
+pub mod activate;
 pub mod clone;
 pub mod list;
 
@@ -11,6 +12,8 @@ pub enum Error {
     Clone { source: clone::Error },
     #[snafu(display("Error listing projects: {}", source))]
     List { source: list::Error },
+    #[snafu(display("Error activating project: {}", source))]
+    Activate { source: activate::Error },
 }
 
 /// Sub command for managing projects [alias: p]
@@ -25,6 +28,7 @@ impl Input {
         match &self.subcmd {
             ProjectCommand::Clone(input) => input.exec(ctx).await.context(CloneSnafu),
             ProjectCommand::List(input) => input.exec(ctx).await.context(ListSnafu),
+            ProjectCommand::Activate(input) => input.exec(ctx).await.context(ActivateSnafu),
         }
     }
 }
@@ -35,4 +39,6 @@ pub enum ProjectCommand {
     Clone(clone::Input),
     #[command(alias = "ls")]
     List(list::Input),
+    #[command(alias = "a")]
+    Activate(activate::Input),
 }
