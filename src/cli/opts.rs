@@ -4,13 +4,14 @@ use crate::{
         renku_url::RenkuUrl,
     },
     httpclient::{Client, Error as ClientError, proxy},
-    project_config::RenkuProjectConfig,
+    project_config::{ProjectConfigError, RenkuProjectConfig},
 };
 
 use super::cmd::*;
 use clap::{Parser, ValueEnum, ValueHint};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 use std::{path::PathBuf, str::FromStr};
 
 /// Main options are available to all commands. They must appear
@@ -117,7 +118,7 @@ impl CommonOpts {
     /// - use the option if specified
     /// - read $CWD/.renku/config.toml
     /// - use environment variable RENKU_CLI_PROJECT_CONTEXT
-    pub fn get_project_context(&self) -> Result<Option<ProjectId>, ProjectIdParseError> {
+    pub fn get_project_context(&self) -> Result<Option<ProjectId>, ProjectContextError> {
         fn get_from_env() -> Result<Option<ProjectId>, ProjectIdParseError> {
             match std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok() {
                 Some(id) => ProjectId::parse(&id).map(Some),
@@ -125,17 +126,27 @@ impl CommonOpts {
             }
         }
         if self.project_context.is_some() {
-            Ok(self.project_context.clone())
-        } else {
-            match RenkuProjectConfig::read_current_dir() {
-                Ok(None) => get_from_env(),
-                Ok(Some(cfg)) => Ok(Some(ProjectId::Id(cfg.project.id))),
-                Err(err) => {
-                    log::warn!("Error getting project config: {}", err);
-                    get_from_env()
-                }
-            }
+            return Ok(self.project_context.clone());
         }
+        match get_from_env() {
+            Ok(Some(id)) => return Ok(Some(id)),
+            Err(err) => {
+                log::warn!("Error getting project id from env: {}", err)
+            }
+            _ => {}
+        }
+
+        match RenkuProjectConfig::read_current_dir() {
+            Ok(Some(cfg)) => return Ok(Some(ProjectId::Id(cfg.project.id))),
+            Err(err) => {
+                log::warn!("Error getting project id from env: {}", err)
+            }
+            _ => {}
+        }
+
+        RenkuProjectConfig::read_global_config()
+            .map(|ok| ok.map(|cfg| ProjectId::Id(cfg.project.id)))
+            .context(ConfigSnafu)
     }
 }
 
@@ -214,4 +225,10 @@ impl FromStr for ProxySetting {
             Ok(ProxySetting::Custom { url: s.to_string() })
         }
     }
+}
+
+#[derive(Debug, Snafu)]
+pub enum ProjectContextError {
+    Parse { source: ProjectIdParseError },
+    Config { source: ProjectConfigError },
 }

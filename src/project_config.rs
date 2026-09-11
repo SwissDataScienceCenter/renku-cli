@@ -1,8 +1,11 @@
+use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use snafu::Snafu;
 use std::path::{Path, PathBuf};
 
 use crate::data::renku_url::RenkuUrl;
+
+const ACTIVE_PROJECT_CONFIG: &'static str = "active_project.toml";
 
 #[derive(Debug, Snafu)]
 pub enum ProjectConfigError {
@@ -26,6 +29,8 @@ pub enum ProjectConfigError {
         source: toml::ser::Error,
         path: PathBuf,
     },
+    #[snafu(display("No global config folder found"))]
+    GlobalConfigFolder {},
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -68,6 +73,33 @@ impl RenkuProjectConfig {
         } else {
             Ok(None)
         }
+    }
+
+    pub fn read_global_config() -> Result<Option<RenkuProjectConfig>, ProjectConfigError> {
+        let db_dir = match ProjectDirs::from("io.renku", "sdsc", "renku-cli") {
+            Some(pp) => {
+                let dir = pp.data_dir();
+                dir.to_path_buf()
+            }
+            None => return Ok(None),
+        };
+        let target = db_dir.join(ACTIVE_PROJECT_CONFIG);
+        if target.exists() {
+            Self::read(&target).map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+    pub fn write_global_config(&self) -> Result<(), ProjectConfigError> {
+        let db_dir = match ProjectDirs::from("io.renku", "sdsc", "renku-cli") {
+            Some(pp) => {
+                let dir = pp.data_dir();
+                dir.to_path_buf()
+            }
+            None => return Err(ProjectConfigError::GlobalConfigFolder {}),
+        };
+        let target = db_dir.join(ACTIVE_PROJECT_CONFIG);
+        self.write(&target)
     }
 
     pub fn read(file: &Path) -> Result<RenkuProjectConfig, ProjectConfigError> {
