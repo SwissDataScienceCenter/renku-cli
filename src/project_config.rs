@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use crate::data::renku_url::RenkuUrl;
 
-const ACTIVE_PROJECT_CONFIG: &'static str = "active_project.toml";
+const ACTIVE_PROJECT_CONFIG: &str = "active_project.toml";
 
 #[derive(Debug, Snafu)]
 pub enum ProjectConfigError {
