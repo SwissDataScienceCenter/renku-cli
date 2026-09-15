@@ -1,5 +1,6 @@
 pub mod activate;
 pub mod clone;
+pub mod deactivate;
 pub mod list;
 
 use super::Context;
@@ -14,6 +15,8 @@ pub enum Error {
     List { source: list::Error },
     #[snafu(display("Error activating project: {}", source))]
     Activate { source: activate::Error },
+    #[snafu(display("Error deactivating project: {}", source))]
+    Deactivate { source: deactivate::Error },
 }
 
 /// Sub command for managing projects [alias: p]
@@ -29,6 +32,7 @@ impl Input {
             ProjectCommand::Clone(input) => input.exec(ctx).await.context(CloneSnafu),
             ProjectCommand::List(input) => input.exec(ctx).await.context(ListSnafu),
             ProjectCommand::Activate(input) => input.exec(ctx).await.context(ActivateSnafu),
+            ProjectCommand::Deactivate(input) => input.exec(ctx).await.context(DeactivateSnafu),
         }
     }
 }
@@ -41,4 +45,6 @@ pub enum ProjectCommand {
     List(list::Input),
     #[command(alias = "a")]
     Activate(activate::Input),
+    #[command(alias = "d")]
+    Deactivate(deactivate::Input),
 }
