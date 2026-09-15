@@ -9,6 +9,7 @@ use self::opts::{MainOpts, SubCommand};
 use serde::Serialize;
 use std::fmt;
 
+#[allow(clippy::result_large_err)]
 pub async fn execute_cmd(opts: MainOpts) -> Result<(), CmdError> {
     let ctx = Context::new(&opts.common_opts)?;
 

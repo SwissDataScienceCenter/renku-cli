@@ -23,6 +23,7 @@ pub struct Context {
 }
 
 impl Context {
+    #[allow(clippy::result_large_err)]
     pub fn new(opts: &CommonOpts) -> Result<Context, CmdError> {
         let client = opts.create_client(None).context(ContextCreateSnafu)?;
         Ok(Context {

@@ -52,6 +52,9 @@ rnk job list
 |---------|-------------|
 | `rnk clone <project-ref>` | Clone a project by ID, namespace/slug, or URL |
 | `rnk project clone <project-ref>` | Same as above (full command form) |
+| `rnk project activate <project-ref>` | Set the active project for the current user (short form: `rnk p a`) |
+| `rnk project deactivate` | Unset the active project (short form: `rnk p d`) |
+| `rnk project current` | Show the currently active project and where it came from (short form: `rnk p c`) |
 
 ### Datasets
 
@@ -84,6 +87,13 @@ All commands share these environment variables:
 | `RENKU_CLI_RENKU_URL` | Base URL to your Renku instance |
 | `RENKU_CLI_PROJECT_CONTEXT` | Default project context (`<username>/<project>` or project ID) |
 | `RENKU_CLI_ACCESS_TOKEN` | Manual access token (skips `rnk login` if set) |
+
+The effective project context is resolved in this precedence order:
+
+1. `--project-context` CLI flag
+2. `RENKU_CLI_PROJECT_CONTEXT` environment variable
+3. `.renku/config.toml` in the current directory (written by `rnk clone`)
+4. Global active project set with `rnk project activate` (stored in `~/.config/renku-cli/active_project.toml`)
 
 Global flags available on every command:
 

@@ -1,0 +1,9 @@
+# Tests that modify process state (env vars, current directory, global config)
+# need to run sequentially because they affect shared state.
+# nextest's test-groups handle mutual exclusion at the process level.
+[[profile.default.overrides]]
+filter = "test(cli::opts)"
+test-group = "serial"
+
+[test-groups]
+serial.max-threads = 1
