@@ -1,7 +1,10 @@
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
-use snafu::Snafu;
-use std::path::{Path, PathBuf};
+use snafu::{ResultExt, Snafu};
+use std::{
+    fs::remove_file,
+    path::{Path, PathBuf},
+};
 
 use crate::data::renku_url::RenkuUrl;
 
@@ -16,6 +19,11 @@ pub enum ProjectConfigError {
     },
     #[snafu(display("Unable to write config file {}: {}", path.display(), source))]
     WriteFile {
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[snafu(display("Unable to delete config file {}: {}", path.display(), source))]
+    DeleteFile {
         source: std::io::Error,
         path: PathBuf,
     },
@@ -100,6 +108,21 @@ impl RenkuProjectConfig {
         };
         let target = db_dir.join(ACTIVE_PROJECT_CONFIG);
         self.write(&target)
+    }
+
+    pub fn remove_global_config() -> Result<(), ProjectConfigError> {
+        let db_dir = match ProjectDirs::from("io.renku", "sdsc", "renku-cli") {
+            Some(pp) => {
+                let dir = pp.data_dir();
+                dir.to_path_buf()
+            }
+            None => return Err(ProjectConfigError::GlobalConfigFolder {}),
+        };
+        let target = db_dir.join(ACTIVE_PROJECT_CONFIG);
+        if target.exists() {
+            remove_file(&target).context(DeleteFileSnafu { path: target })?;
+        }
+        Ok(())
     }
 
     pub fn read(file: &Path) -> Result<RenkuProjectConfig, ProjectConfigError> {
