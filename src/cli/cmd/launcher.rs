@@ -10,7 +10,7 @@ pub enum Error {
     List { source: list::Error },
 }
 
-/// Sub command for managing launchers
+/// Sub command for managing launchers [alias: l]
 #[derive(Parser, Debug)]
 pub struct Input {
     #[command(subcommand)]
@@ -27,6 +27,6 @@ impl Input {
 
 #[derive(Parser, Debug)]
 pub enum LauncherCommand {
-    #[command()]
+    #[command(alias = "ls")]
     List(list::Input),
 }

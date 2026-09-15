@@ -8,7 +8,7 @@ use clap::Parser;
 
 use snafu::{ResultExt, Snafu};
 
-/// Listing jobs.
+/// Listing jobs [alias: ls].
 ///
 /// List currently running jobs.
 #[derive(Parser, Debug)]
