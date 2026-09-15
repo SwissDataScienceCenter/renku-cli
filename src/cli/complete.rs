@@ -141,6 +141,7 @@ pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate
             None => None,
         };
         for launcher in launchers
+            .0
             .iter()
             .filter(|e| e.launcher_type == SessionMode::NonInteractive)
             .filter(|e| match &project_id {
