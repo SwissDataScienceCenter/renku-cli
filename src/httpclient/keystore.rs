@@ -64,6 +64,8 @@ enum KeystorePreference {
     LinuxKeyUtils,
     #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     DBus,
+    #[cfg(target_os = "macos")]
+    AppleNative,
     File,
     Memory,
 }
@@ -109,6 +111,13 @@ impl KeyringStore {
 
                 log::info!("Using an dbus secret service as requested.");
                 let cs: Arc<CredentialStore> = ZBusStore::new().context(KeystoreCreateSnafu)?;
+                Ok(cs)
+            }
+            #[cfg(target_os = "macos")]
+            KeystorePreference::AppleNative => {
+                use apple_native_keyring_store::keychain::Store as AppleStore;
+                log::info!("Using apple native keyring as requested.");
+                let cs: Arc<CredentialStore> = AppleStore::new().context(KeystoreCreateSnafu)?;
                 Ok(cs)
             }
             KeystorePreference::Memory => {
@@ -264,7 +273,21 @@ fn get_native_keystore() -> Result<Option<Arc<keyring_core::CredentialStore>>, E
     Ok(Some(store))
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "freebsd")))]
+#[cfg(target_os = "macos")]
+fn get_native_keystore() -> Result<Option<Arc<keyring_core::CredentialStore>>, Error> {
+    use apple_native_keyring_store::keychain::Store as AppleStore;
+
+    let store = AppleStore::new().context(KeystoreCreateSnafu)?;
+    log::info!("Use Apple native keychain as keystore.");
+    Ok(Some(store))
+}
+
+#[cfg(not(any(
+    target_os = "windows",
+    target_os = "linux",
+    target_os = "freebsd",
+    target_os = "macos"
+)))]
 fn get_native_keystore() -> Result<Option<Arc<keyring_core::CredentialStore>>, Error> {
     Ok(None)
 }
