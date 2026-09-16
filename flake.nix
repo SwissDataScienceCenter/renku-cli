@@ -54,6 +54,13 @@
         env = {
           VERGEN_GIT_SHA = self.rev or (self.dirtyRev or "unknown");
         };
+
+        # Nix sandbox may have a homeless shelter HOME with no write permission.
+        # Tests that write global config need a writable home directory.
+        preBuild = ''
+          export HOME="$TMPDIR/home"
+          mkdir -p "$HOME"
+        '';
         nativeBuildInputs = [
           pkgs.pkg-config
         ];

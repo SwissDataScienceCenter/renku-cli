@@ -11,6 +11,7 @@ async fn main() -> EyreResult<()> {
     Ok(())
 }
 
+#[allow(clippy::result_large_err)]
 async fn execute() -> Result<()> {
     CompleteEnv::with_factory(MainOpts::command).complete();
     let opts = rnk::read_args();

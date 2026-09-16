@@ -4,13 +4,14 @@ use crate::{
         renku_url::RenkuUrl,
     },
     httpclient::{Client, Error as ClientError, proxy},
-    project_config::RenkuProjectConfig,
+    project_config::{ProjectConfigError, RenkuProjectConfig},
 };
 
 use super::cmd::*;
 use clap::{Parser, ValueEnum, ValueHint};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 use std::{path::PathBuf, str::FromStr};
 
 /// Main options are available to all commands. They must appear
@@ -117,7 +118,7 @@ impl CommonOpts {
     /// - use the option if specified
     /// - read $CWD/.renku/config.toml
     /// - use environment variable RENKU_CLI_PROJECT_CONTEXT
-    pub fn get_project_context(&self) -> Result<Option<ProjectId>, ProjectIdParseError> {
+    pub fn get_project_context(&self) -> Result<Option<ProjectId>, ProjectContextError> {
         fn get_from_env() -> Result<Option<ProjectId>, ProjectIdParseError> {
             match std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok() {
                 Some(id) => ProjectId::parse(&id).map(Some),
@@ -125,17 +126,27 @@ impl CommonOpts {
             }
         }
         if self.project_context.is_some() {
-            Ok(self.project_context.clone())
-        } else {
-            match RenkuProjectConfig::read_current_dir() {
-                Ok(None) => get_from_env(),
-                Ok(Some(cfg)) => Ok(Some(ProjectId::Id(cfg.project.id))),
-                Err(err) => {
-                    log::warn!("Error getting project config: {}", err);
-                    get_from_env()
-                }
-            }
+            return Ok(self.project_context.clone());
         }
+        match get_from_env() {
+            Ok(Some(id)) => return Ok(Some(id)),
+            Err(err) => {
+                log::warn!("Error getting project id from env: {}", err)
+            }
+            _ => {}
+        }
+
+        match RenkuProjectConfig::read_current_dir() {
+            Ok(Some(cfg)) => return Ok(Some(ProjectId::Id(cfg.project.id))),
+            Err(err) => {
+                log::warn!("Error getting project id from env: {}", err)
+            }
+            _ => {}
+        }
+
+        RenkuProjectConfig::read_global_config()
+            .map(|ok| ok.map(|cfg| ProjectId::Id(cfg.project.id)))
+            .context(ConfigSnafu)
     }
 }
 
@@ -212,6 +223,338 @@ impl FromStr for ProxySetting {
             Ok(ProxySetting::None)
         } else {
             Ok(ProxySetting::Custom { url: s.to_string() })
+        }
+    }
+}
+
+#[derive(Debug, Snafu)]
+pub enum ProjectContextError {
+    Parse { source: ProjectIdParseError },
+    Config { source: ProjectConfigError },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    fn create_local_config(project_id: &str) -> (std::path::PathBuf, std::path::PathBuf) {
+        let tmp = std::env::temp_dir();
+        let pid = std::process::id();
+        let id = rand::random::<u64>();
+        let test_dir = tmp.join(format!("renku_test_opts_p{}_{id}", pid));
+        std::fs::create_dir_all(test_dir.join(".renku")).unwrap();
+        let config_path = test_dir.join(".renku").join("config.toml");
+        let config = format!(
+            "\
+version = 1
+renku_url = \"https://renkulab.io\"
+
+[project]
+id = \"{}\"
+namespace = \"test-ns\"
+slug = \"test-project\"
+",
+            project_id
+        );
+        std::fs::File::create(&config_path)
+            .unwrap()
+            .write_all(config.as_bytes())
+            .unwrap();
+        (test_dir, config_path)
+    }
+
+    fn cleanup_local_config(test_dir: &std::path::Path) {
+        let _ = std::fs::remove_dir_all(test_dir);
+    }
+
+    /// Helper to create a global config file in the expected location.
+    /// Returns the path to the created file and the previous content (if any).
+    fn create_global_config(project_id: &str) -> (std::path::PathBuf, Option<String>) {
+        use directories::ProjectDirs;
+        let db_dir = ProjectDirs::from("io.renku", "sdsc", "renku-cli")
+            .expect("global config folder not found")
+            .data_dir()
+            .to_path_buf();
+        let target = db_dir.join("active_project.toml");
+        let prev_content = std::fs::read_to_string(&target).ok();
+        let config = format!(
+            "\
+version = 1
+renku_url = \"https://renkulab.io\"
+
+[project]
+id = \"{}\"
+namespace = \"test-ns\"
+slug = \"test-project\"
+",
+            project_id
+        );
+        eprintln!("path: {}", db_dir.display());
+        std::fs::create_dir_all(&db_dir).unwrap();
+        std::fs::write(&target, config).unwrap();
+        (target, prev_content)
+    }
+
+    fn cleanup_global_config(path: &std::path::Path, prev_content: Option<String>) {
+        match prev_content {
+            Some(content) => {
+                let _ = std::fs::write(path, content);
+            }
+            None => {
+                let _ = std::fs::remove_file(path);
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Precedence: CLI arg > env var > local config > global config
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    fn cli_arg_is_used_when_present() {
+        let opts = CommonOpts {
+            verbosity: clap_verbosity_flag::Verbosity::new(0, 0),
+            format: Format::Default,
+            renku_url: None,
+            project_context: Some(ProjectId::parse("cli-project-id").unwrap()),
+            proxy: None,
+            proxy_user: None,
+            proxy_password: None,
+        };
+        let result = opts.get_project_context().unwrap();
+        assert_eq!(result, Some(ProjectId::parse("cli-project-id").unwrap()));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn cli_arg_takes_precedence_over_env_var() {
+        unsafe {
+            std::env::set_var("RENKU_CLI_PROJECT_CONTEXT", "env-project-id");
+        }
+        let opts = CommonOpts {
+            verbosity: clap_verbosity_flag::Verbosity::new(0, 0),
+            format: Format::Default,
+            renku_url: None,
+            project_context: Some(ProjectId::parse("cli-project-id").unwrap()),
+            proxy: None,
+            proxy_user: None,
+            proxy_password: None,
+        };
+        let result = opts.get_project_context().unwrap();
+        assert_eq!(result, Some(ProjectId::parse("cli-project-id").unwrap()));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn env_var_is_used_when_no_cli_arg() {
+        unsafe {
+            std::env::set_var("RENKU_CLI_PROJECT_CONTEXT", "env-project-id");
+        }
+        let opts = CommonOpts {
+            verbosity: clap_verbosity_flag::Verbosity::new(0, 0),
+            format: Format::Default,
+            renku_url: None,
+            project_context: None,
+            proxy: None,
+            proxy_user: None,
+            proxy_password: None,
+        };
+        let result = opts.get_project_context().unwrap();
+        assert_eq!(result, Some(ProjectId::parse("env-project-id").unwrap()));
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn env_var_takes_precedence_over_local_config() {
+        let saved = std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok();
+        let (test_dir, _config_path) = create_local_config("local-project-id");
+
+        let orig_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&test_dir).unwrap();
+
+        unsafe {
+            std::env::set_var("RENKU_CLI_PROJECT_CONTEXT", "env-project-id");
+        }
+        let opts = CommonOpts {
+            verbosity: clap_verbosity_flag::Verbosity::new(0, 0),
+            format: Format::Default,
+            renku_url: None,
+            project_context: None,
+            proxy: None,
+            proxy_user: None,
+            proxy_password: None,
+        };
+        let result = opts.get_project_context().unwrap();
+        assert_eq!(result, Some(ProjectId::parse("env-project-id").unwrap()));
+
+        std::env::set_current_dir(orig_dir).unwrap();
+        cleanup_local_config(&test_dir);
+
+        match saved {
+            Some(v) => unsafe { std::env::set_var("RENKU_CLI_PROJECT_CONTEXT", v) },
+            None => unsafe { std::env::remove_var("RENKU_CLI_PROJECT_CONTEXT") },
+        }
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn local_config_is_used_when_no_cli_or_env() {
+        let saved = std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok();
+        unsafe {
+            std::env::remove_var("RENKU_CLI_PROJECT_CONTEXT");
+        }
+        let (test_dir, _config_path) = create_local_config("local-project-id");
+
+        let orig_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&test_dir).unwrap();
+
+        let opts = CommonOpts {
+            verbosity: clap_verbosity_flag::Verbosity::new(0, 0),
+            format: Format::Default,
+            renku_url: None,
+            project_context: None,
+            proxy: None,
+            proxy_user: None,
+            proxy_password: None,
+        };
+        let result = opts.get_project_context().unwrap();
+        assert_eq!(result, Some(ProjectId::parse("local-project-id").unwrap()));
+
+        std::env::set_current_dir(orig_dir).unwrap();
+        cleanup_local_config(&test_dir);
+
+        match saved {
+            Some(v) => unsafe { std::env::set_var("RENKU_CLI_PROJECT_CONTEXT", v) },
+            None => unsafe { std::env::remove_var("RENKU_CLI_PROJECT_CONTEXT") },
+        }
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn local_config_overrides_global_config() {
+        let saved = std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok();
+        unsafe {
+            std::env::remove_var("RENKU_CLI_PROJECT_CONTEXT");
+        }
+        let (global_config, prev_content) = create_global_config("global-project-id");
+        let (test_dir, _config_path) = create_local_config("local-project-id");
+
+        let orig_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&test_dir).unwrap();
+
+        let opts = CommonOpts {
+            verbosity: clap_verbosity_flag::Verbosity::new(0, 0),
+            format: Format::Default,
+            renku_url: None,
+            project_context: None,
+            proxy: None,
+            proxy_user: None,
+            proxy_password: None,
+        };
+        let result = opts.get_project_context().unwrap();
+        assert_eq!(result, Some(ProjectId::parse("local-project-id").unwrap()));
+
+        std::env::set_current_dir(orig_dir).unwrap();
+        cleanup_local_config(&test_dir);
+        cleanup_global_config(&global_config, prev_content);
+
+        match saved {
+            Some(v) => unsafe { std::env::set_var("RENKU_CLI_PROJECT_CONTEXT", v) },
+            None => unsafe { std::env::remove_var("RENKU_CLI_PROJECT_CONTEXT") },
+        }
+    }
+
+    #[test]
+    #[serial_test::serial]
+    fn global_config_is_used_when_nothing_else() {
+        let saved = std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok();
+        unsafe {
+            std::env::remove_var("RENKU_CLI_PROJECT_CONTEXT");
+        }
+        let (global_config, prev_content) = create_global_config("global-project-id");
+
+        // Use a directory with no local config
+        let no_config_dir = std::env::temp_dir().join(format!(
+            "renku_test_opts_no_config_p{}_{}",
+            std::process::id(),
+            rand::random::<u64>()
+        ));
+        let _ = std::fs::remove_dir_all(&no_config_dir);
+        std::fs::create_dir_all(&no_config_dir).unwrap();
+
+        let orig_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&no_config_dir).unwrap();
+
+        let opts = CommonOpts {
+            verbosity: clap_verbosity_flag::Verbosity::new(0, 0),
+            format: Format::Default,
+            renku_url: None,
+            project_context: None,
+            proxy: None,
+            proxy_user: None,
+            proxy_password: None,
+        };
+        let result = opts.get_project_context().unwrap();
+        assert_eq!(result, Some(ProjectId::parse("global-project-id").unwrap()));
+
+        std::env::set_current_dir(orig_dir).unwrap();
+        let _ = std::fs::remove_dir_all(&no_config_dir);
+        cleanup_global_config(&global_config, prev_content);
+
+        match saved {
+            Some(v) => unsafe { std::env::set_var("RENKU_CLI_PROJECT_CONTEXT", v) },
+            None => unsafe { std::env::remove_var("RENKU_CLI_PROJECT_CONTEXT") },
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // No context
+    // ---------------------------------------------------------------------------
+
+    #[test]
+    #[serial_test::serial]
+    fn no_context_when_nothing_set() {
+        // Ensure global config is removed so this test truly has no context.
+        use directories::ProjectDirs;
+        let pd = ProjectDirs::from("io.renku", "sdsc", "renku-cli")
+            .expect("global config folder not found");
+        let global_file = pd.data_dir().join("active_project.toml");
+        let _ = std::fs::remove_file(&global_file);
+
+        let saved = std::env::var("RENKU_CLI_PROJECT_CONTEXT").ok();
+        unsafe {
+            std::env::remove_var("RENKU_CLI_PROJECT_CONTEXT");
+        }
+        let no_config_dir = std::env::temp_dir().join(format!(
+            "renku_test_opts_no_config_p{}_{}",
+            std::process::id(),
+            rand::random::<u64>()
+        ));
+        let _ = std::fs::remove_dir_all(&no_config_dir);
+        std::fs::create_dir_all(&no_config_dir).unwrap();
+
+        let orig_dir = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&no_config_dir).unwrap();
+
+        let opts = CommonOpts {
+            verbosity: clap_verbosity_flag::Verbosity::new(0, 0),
+            format: Format::Default,
+            renku_url: None,
+            project_context: None,
+            proxy: None,
+            proxy_user: None,
+            proxy_password: None,
+        };
+        let result = opts.get_project_context().unwrap();
+        assert_eq!(result, None);
+
+        std::env::set_current_dir(orig_dir).unwrap();
+        let _ = std::fs::remove_dir_all(&no_config_dir);
+
+        match saved {
+            Some(v) => unsafe { std::env::set_var("RENKU_CLI_PROJECT_CONTEXT", v) },
+            None => unsafe { std::env::remove_var("RENKU_CLI_PROJECT_CONTEXT") },
         }
     }
 }
