@@ -95,6 +95,8 @@ pub enum Error {
 
     #[snafu(display("Error parsing url: {}", reason))]
     ProjectUrlParse { reason: String },
+    #[snafu(display("Not logged in, use `rnk login` to log in."))]
+    LoggedOut,
 
     #[snafu(transparent)]
     Auth { source: auth::AuthError },
@@ -197,7 +199,7 @@ impl Client {
     async fn set_bearer_token(&self, b: RequestBuilder) -> Result<RequestBuilder, Error> {
         match self.get_access_token().await? {
             Some(token) => Ok(b.bearer_auth(token)),
-            None => Ok(b),
+            None => Err(Error::LoggedOut),
         }
     }
 
