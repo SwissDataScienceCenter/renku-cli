@@ -13,7 +13,7 @@ pub enum Error {
     List { source: list::Error },
 }
 
-/// Sub command for managing projects
+/// Sub command for managing projects [alias: p]
 #[derive(Parser, Debug)]
 pub struct Input {
     #[command(subcommand)]
@@ -33,6 +33,6 @@ impl Input {
 pub enum ProjectCommand {
     #[command()]
     Clone(clone::Input),
-    #[command()]
+    #[command(alias = "ls")]
     List(list::Input),
 }
