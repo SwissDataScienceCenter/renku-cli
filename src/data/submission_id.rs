@@ -31,7 +31,7 @@ impl SubmissionId {
     pub fn random() -> SubmissionId {
         let first = util::strings::random(1, "abcdefghijklmnopqrstuvwxyz");
         let s = util::strings::random_lower_alpha_num(8);
-        SubmissionId(format!("{}{}", first, s))
+        SubmissionId(format!("run-{}{}", first, s))
     }
 }
 
@@ -93,5 +93,5 @@ fn submission_id_parse() {
         SubmissionId::parse("ab-cd-de").unwrap().as_str(),
         "ab-cd-de"
     );
-    assert!(SubmissionId::random().as_str().len() > 4);
+    assert!(SubmissionId::random().as_str().len() > 8);
 }
