@@ -361,10 +361,11 @@ where
 {
     let mut builder = Builder::default();
     for r in data {
-        let data = vec![&r.name, r.id.as_str(), &r.namespace, &r.slug];
+        let identifier = format!("{}/{}", r.namespace, r.slug);
+        let data = vec![&r.name, &identifier, r.id.as_str()];
         builder.push_record(data);
     }
-    builder.insert_record(0, vec!["Project", "Id", "Namespace", "Slug"]);
+    builder.insert_record(0, vec!["Project", "Identifier", "Id"]);
 
     let mut table = builder.build();
     let settings = Settings::default().with(Style::sharp());
