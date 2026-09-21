@@ -104,12 +104,16 @@ impl Input {
             ctx.write_result(&info).await.context(WriteResultSnafu)?;
 
             // open the browser, if there is one
-            open::that(info.authorization_url.as_ref()).unwrap_or_else(|_| {
-                println!(
-                    "Couldn't open browser, please navigate to {}",
-                    info.authorization_url
-                );
-            });
+            if let Err(e) = open::that(info.authorization_url.as_ref()) {
+                ctx.write_result(&SimpleMessage {
+                    message: format!(
+                        "Couldn't open browser, please navigate to {}: {}",
+                        info.authorization_url, e
+                    ),
+                })
+                .await
+                .context(WriteResultSnafu)?;
+            };
 
             if steps == Steps::Complete {
                 ctx.write_result(&SimpleMessage {

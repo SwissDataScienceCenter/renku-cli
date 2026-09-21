@@ -43,6 +43,7 @@ use snafu::{ResultExt, Snafu};
 use std::path::PathBuf;
 
 const USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+const RESULTS_PER_PAGE: u16 = 50;
 
 fn display_bad_response(em: &Option<ErrorResponse>, body: &String) -> String {
     match em {
@@ -100,6 +101,11 @@ pub enum Error {
 
     #[snafu(transparent)]
     Auth { source: auth::AuthError },
+    #[snafu(display("Validation error: {}", reason))]
+    ValidationError { reason: String },
+
+    #[snafu(display("Request could not be cloned"))]
+    Clone,
 }
 
 /// The renku http client.
@@ -119,6 +125,12 @@ struct Settings {
     trusted_certificate: Option<PathBuf>,
     accept_invalid_certs: bool,
     base_url: RenkuUrl,
+}
+
+#[derive(Debug)]
+struct PaginatedResults<R: DeserializeOwned> {
+    pages: Vec<R>,
+    total_pages: Option<u16>,
 }
 
 impl Client {
@@ -225,6 +237,62 @@ impl Client {
                 err_message: err_resp,
             })
         }
+    }
+
+    async fn run_request_paginated<R: DeserializeOwned>(
+        &self,
+        req: RequestBuilder,
+        url: Url,
+        per_page: u16,
+        num_pages: u16,
+    ) -> Result<PaginatedResults<R>, Error> {
+        let req = req.build().context(HttpSnafu { url: url.clone() })?;
+        let mut pages = vec![];
+        let mut total_pages = None;
+        for cur_page in 1..(num_pages + 1) {
+            let mut cur_req = req.try_clone().ok_or(Error::Clone)?;
+            {
+                let url = cur_req.url_mut();
+                url.query_pairs_mut()
+                    .append_pair("page", &cur_page.to_string())
+                    .append_pair("per_page", &per_page.to_string());
+                log::debug!("Run request: {}", url);
+            }
+            let resp = self
+                .client
+                .execute(cur_req)
+                .await
+                .context(HttpSnafu { url: url.clone() })?;
+
+            let status = resp.status();
+            let headers = resp.headers().clone();
+            let body = resp.text().await.context(DeserializeRespSnafu)?;
+            log::debug!("Response: {} -> {}", url, body);
+            if status.is_success() {
+                let result = serde_json::from_str::<R>(&body).context(DeserializeJsonSnafu)?;
+                pages.push(result);
+                if let Some(total_pages_entry) = headers.get("total-pages")
+                    && let Ok(total_pages_str) = total_pages_entry.to_str()
+                    && let Ok(tp) = total_pages_str.parse::<u16>()
+                {
+                    total_pages = Some(tp);
+                }
+                if let Some(tp) = total_pages
+                    && cur_page >= tp
+                {
+                    return Ok(PaginatedResults { pages, total_pages });
+                }
+            } else {
+                let err_resp = serde_json::from_str::<ErrorResponse>(&body).ok();
+                return Err(Error::BadResponse {
+                    status,
+                    body,
+                    url: url.to_string(),
+                    err_message: err_resp,
+                });
+            }
+        }
+        Ok(PaginatedResults { pages, total_pages })
     }
 
     /// Runs a GET request to the given url. When `debug` is true, the
@@ -364,15 +432,36 @@ impl Client {
             })
         }
     }
-    pub async fn list_projects(&self, direct_member: bool) -> Result<ProjectList, Error> {
+    pub async fn list_projects(
+        &self,
+        direct_member: bool,
+        total_results: u16,
+    ) -> Result<(ProjectList, Option<usize>), Error> {
         let mut url = self.make_url("/api/data/projects")?;
         url.query_pairs_mut()
             .append_pair("direct_member", &direct_member.to_string());
         let req = self.set_bearer_token(self.client.get(url.clone())).await?;
 
-        self.run_request::<Vec<ProjectDetails>>(req, url)
-            .await
-            .map(ProjectList)
+        let result = self
+            .run_request_paginated::<Vec<ProjectDetails>>(
+                req,
+                url,
+                RESULTS_PER_PAGE,
+                total_results.div_ceil(RESULTS_PER_PAGE),
+            )
+            .await?;
+        let mut projects = result.pages.into_iter().fold(vec![], |mut acc, e| {
+            acc.extend(e);
+            acc
+        });
+        projects.truncate(total_results as usize);
+
+        Ok((
+            ProjectList(projects),
+            result
+                .total_pages
+                .map(|tp| tp as usize * RESULTS_PER_PAGE as usize),
+        ))
     }
 
     pub async fn get_namespace(
