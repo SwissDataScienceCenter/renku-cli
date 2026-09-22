@@ -131,6 +131,7 @@ struct Settings {
 struct PaginatedResults<R: DeserializeOwned> {
     pages: Vec<R>,
     total_pages: Option<u16>,
+    total_results: Option<usize>,
 }
 
 impl Client {
@@ -249,6 +250,7 @@ impl Client {
         let req = req.build().context(HttpSnafu { url: url.clone() })?;
         let mut pages = vec![];
         let mut total_pages = None;
+        let mut total_results = None;
         for cur_page in 1..(num_pages + 1) {
             let mut cur_req = req.try_clone().ok_or(Error::Clone)?;
             {
@@ -277,10 +279,20 @@ impl Client {
                 {
                     total_pages = Some(tp);
                 }
+                if let Some(total_results_entry) = headers.get("total")
+                    && let Ok(total_results_str) = total_results_entry.to_str()
+                    && let Ok(tr) = total_results_str.parse::<usize>()
+                {
+                    total_results = Some(tr);
+                }
                 if let Some(tp) = total_pages
                     && cur_page >= tp
                 {
-                    return Ok(PaginatedResults { pages, total_pages });
+                    return Ok(PaginatedResults {
+                        pages,
+                        total_pages,
+                        total_results,
+                    });
                 }
             } else {
                 let err_resp = serde_json::from_str::<ErrorResponse>(&body).ok();
@@ -292,7 +304,11 @@ impl Client {
                 });
             }
         }
-        Ok(PaginatedResults { pages, total_pages })
+        Ok(PaginatedResults {
+            pages,
+            total_pages,
+            total_results,
+        })
     }
 
     /// Runs a GET request to the given url. When `debug` is true, the
@@ -458,9 +474,11 @@ impl Client {
 
         Ok((
             ProjectList(projects),
-            result
-                .total_pages
-                .map(|tp| tp as usize * RESULTS_PER_PAGE as usize),
+            result.total_results.or_else(|| {
+                result
+                    .total_pages
+                    .map(|tp| tp as usize * RESULTS_PER_PAGE as usize)
+            }),
         ))
     }
 
