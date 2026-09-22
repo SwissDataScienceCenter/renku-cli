@@ -4,6 +4,7 @@ pub mod launcher;
 pub mod login;
 pub mod logout;
 pub mod project;
+pub mod session;
 pub mod update;
 #[cfg(feature = "user-doc")]
 pub mod userdoc;
@@ -87,6 +88,8 @@ pub enum CmdError {
 
     #[snafu(display("Job - {}", source))]
     Job { source: job::Error },
+    #[snafu(display("Session - {}", source))]
+    Session { source: session::Error },
     #[snafu(display("Launcher - {}", source))]
     Launcher { source: launcher::Error },
 
@@ -97,6 +100,11 @@ pub enum CmdError {
 impl From<job::Error> for CmdError {
     fn from(source: job::Error) -> Self {
         CmdError::Job { source }
+    }
+}
+impl From<session::Error> for CmdError {
+    fn from(source: session::Error) -> Self {
+        CmdError::Session { source }
     }
 }
 impl From<launcher::Error> for CmdError {

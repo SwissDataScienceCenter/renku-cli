@@ -1,21 +1,21 @@
 use super::Context;
 use crate::{
     cli::sink::Error as SinkError,
-    httpclient::{self, data::SessionMode},
+    httpclient::{
+        self,
+        data::{InteractiveSessionList, SessionMode},
+    },
 };
 
 use clap::Parser;
 
 use snafu::{ResultExt, Snafu};
 
-/// Listing launchers [alias: ls].
+/// Listing sessions [alias: ls].
 ///
-/// List currently running launchers.
+/// List currently running sessions.
 #[derive(Parser, Debug)]
-pub struct Input {
-    #[arg(long, short)]
-    pub mode: Option<SessionMode>,
-}
+pub struct Input {}
 
 #[derive(Debug, Snafu)]
 pub enum Error {
@@ -28,14 +28,17 @@ pub enum Error {
 
 impl Input {
     pub async fn exec(&self, ctx: Context) -> Result<(), Error> {
-        let mut result = ctx.client.list_launchers().await.context(HttpClientSnafu)?;
+        let mut result = ctx
+            .client
+            .list_sessions(Some(SessionMode::Interactive))
+            .await
+            .context(HttpClientSnafu)?;
 
-        if let Some(mode) = self.mode {
-            result.retain(|e| e.launcher_type == mode);
-        }
         if let Ok(Some(project)) = ctx.resolve_project_context().await {
             result.retain(|v| v.project_id == project.id);
         }
+        let result = InteractiveSessionList(result);
+
         ctx.write_result(&result).await.context(WriteResultSnafu)
     }
 }
