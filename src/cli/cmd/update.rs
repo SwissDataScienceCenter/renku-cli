@@ -36,6 +36,9 @@ fn update() -> Result<UpdateResult, Error> {
             }
         }
         Err(SelfUpdateError::Aborted) => Ok(UpdateResult::Aborted),
+        Err(SelfUpdateError::Io(err)) if err.kind() == std::io::ErrorKind::PermissionDenied => {
+            Err(Error::UpdatePermission { source: err })
+        }
         Err(e) => Err(Error::Update { source: e }),
     }
 }
@@ -52,6 +55,11 @@ impl Input {
 pub enum Error {
     #[snafu(display("Couldn't perform update: {}", source))]
     Update { source: SelfUpdateError },
+    #[snafu(display(
+        "Self update needs elevated permissions, try running as administrator(e.g. with `sudo`): {}",
+        source
+    ))]
+    UpdatePermission { source: std::io::Error },
 
     #[snafu(display("Couldn't build self updater: {}", source))]
     Build { source: SelfUpdateError },
