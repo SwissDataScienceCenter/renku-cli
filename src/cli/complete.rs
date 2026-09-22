@@ -42,20 +42,24 @@ where
 }
 
 /// Parses the part of the arguments that make up CommonOpts.
+///
+/// This is so code completions have access to global options
+/// like project scope or verbosity
 fn parse_common_opts() -> Result<CommonOpts, ClapError> {
-    // this is a bit nasty, due to lack of a better option: manually
-    // massage the arguments to remove everything after the first
-    // non-option argument appears, which is the subcommand passed to
-    // the binary. Then the standard command 'version' is appended, so
-    // that parsing succeeds. Only common-options are of interest
-    // here.
-    let mut it = std::env::args().skip(2);
-    let first = it.next();
-    let first_it = first.map(std::iter::once).into_iter().flatten();
-    let remain = it.take_while(|e| e.starts_with('-'));
-    // the version command to make arg parsing successful
-    let version = std::iter::once("version".to_string());
-    let args = first_it.chain(remain).chain(version);
+    // this is a bit nasty, due to lack of a better option:
+    // We try to parse the command, slowly cutting off pieces from
+    // the right side and appending the `version` command until
+    // it parses successfully
+    let args: Vec<_> = std::env::args().skip(2).collect();
+    for i in (1..=args.len()).rev() {
+        let version = "version".to_string();
+        let it = args[0..i].iter().chain(std::iter::once(&version));
+        if let Ok(parsed) = MainOpts::try_parse_from(it) {
+            return Ok(parsed.common_opts);
+        }
+    }
+    // if we could not parse, just parse the whole thing again so
+    // there is a proper error output
     MainOpts::try_parse_from(args).map(|e| e.common_opts)
 }
 
