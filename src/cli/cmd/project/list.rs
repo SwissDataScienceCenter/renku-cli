@@ -40,7 +40,7 @@ impl Input {
             .context(HttpClientSnafu)?;
         if let Some(total_results) = result.1 {
             ctx.write_result(&SimpleMessage {
-                message: format!("Showing {}/~{} results", result.0.0.len(), total_results),
+                message: format!("Showing {}/{} results", result.0.0.len(), total_results),
             })
             .await
             .context(WriteResultSnafu)?;
