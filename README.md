@@ -22,6 +22,26 @@ nix profile install github:SwissDataScienceCenter/renku-cli
 
 For other installation methods (manual binary, NixOS integration), see the [Installation Guide](docs/install.md).
 
+## Shell Completions (recommended!)
+
+The CLI can generate completions for bash, fish, zsh, and PowerShell. These can make it much easier
+to use the CLI and pick entities to work with.
+Add the following to your shell configuration:
+
+```bash
+# Bash
+echo "source <(COMPLETE=bash rnk)" >> ~/.bashrc
+
+# Fish
+echo "COMPLETE=fish rnk | source" >> ~/.config/fish/config.fish
+
+# Zsh
+echo "source <(COMPLETE=zsh rnk)" >> ~/.zshrc
+
+# PowerShell
+echo '$env:COMPLETE = "powershell"; rnk | Out-String | Invoke-Expression; Remove-Item Env:\COMPLETE' >> $PROFILE
+```
+
 ## Quick Start
 
 Get up and running in three steps:
@@ -117,10 +137,6 @@ Global flags available on every command:
 - `-v` / `-q` — increase / decrease log verbosity
 
 For a full list of options, run `rnk --help`.
-
-## Shell Completions
-
-See the [Installation Guide](docs/install.md) for shell completion setup (bash, fish, zsh, powershell).
 
 ## Documentation
 
