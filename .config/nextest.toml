@@ -6,4 +6,4 @@ filter = "test(cli::opts)"
 test-group = "serial"
 
 [test-groups]
-serial.max-threads = 1
+serial = { max-threads = 1 }
