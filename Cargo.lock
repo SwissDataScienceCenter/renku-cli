@@ -5202,7 +5202,6 @@ dependencies = [
  "clap_complete",
  "color-eyre",
  "comrak",
- "console 0.16.4",
  "db-keystore",
  "directories",
  "env_logger",
