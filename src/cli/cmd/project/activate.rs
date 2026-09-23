@@ -1,6 +1,6 @@
 use super::Context;
 use crate::{
-    cli::sink::Error as SinkError,
+    cli::{complete::complete_project_id, sink::Error as SinkError},
     data::{project_id::ProjectId, simple_message::SimpleMessage},
     httpclient::{self},
     project_config::{ProjectConfigError, ProjectInfo, RenkuProjectConfig},
@@ -8,6 +8,7 @@ use crate::{
 
 use clap::{Parser, ValueHint};
 
+use clap_complete::ArgValueCompleter;
 use snafu::{ResultExt, Snafu};
 
 /// Set a project as the currently active one [alias: a].
@@ -17,7 +18,7 @@ use snafu::{ResultExt, Snafu};
 pub struct Input {
     /// The project to set as active, identified by either its id, the
     /// namespace/slug identifier or the complete url.
-    #[arg(value_hint=ValueHint::Other)]
+    #[arg(value_hint=ValueHint::Other,add = ArgValueCompleter::new(complete_project_id))]
     pub project_ref: ProjectId,
 }
 

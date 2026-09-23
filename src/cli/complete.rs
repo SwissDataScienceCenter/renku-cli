@@ -5,7 +5,7 @@ use crate::{
     data::project_id::ProjectId,
     httpclient::{
         Client,
-        data::{SessionLauncher, SessionMode, SessionStartResponse},
+        data::{ProjectDetails, SessionLauncher, SessionMode, SessionStartResponse},
     },
 };
 
@@ -220,4 +220,40 @@ async fn complete_session_name(
         eprintln!("No job launchers found.");
     }
     result
+}
+
+pub fn complete_project_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
+    make_sync_completer(current, async |client, _| {
+        let projects = match client.list_projects(true, 100).await {
+            Err(msg) => {
+                eprintln!(
+                    "Completions failed: Error getting list of projects: {}",
+                    msg
+                );
+                return vec![];
+            }
+            Ok(res) => res,
+        };
+
+        let mut result: Vec<CompletionCandidate> = vec![];
+        for project in projects.0.0.iter() {
+            let cc = make_project_completion_candidate(project).await;
+            result.push(cc);
+        }
+        if result.is_empty() {
+            eprintln!("No projects found.");
+        }
+        result
+    })
+}
+async fn make_project_completion_candidate(project: &ProjectDetails) -> CompletionCandidate {
+    let mut help = StyledStr::new();
+    help.push_str(&project.name);
+    if let Some(desc) = &project.description {
+        help.push_str(" - ");
+        help.push_str(desc);
+    }
+    let cc = CompletionCandidate::new(format!("{}/{}", project.namespace, project.slug));
+
+    cc.help(Some(help))
 }
