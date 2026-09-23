@@ -128,70 +128,96 @@ async fn resolve_project_id(client: &Client, id: ProjectId) -> Option<String> {
 /// Complete a job session launcher id
 pub fn complete_job_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
     make_sync_completer(current, async |client, opts| {
-        let launchers = match client.list_launchers().await {
-            Err(msg) => {
-                eprintln!(
-                    "Completions failed: Error getting list of launchers: {}",
-                    msg
-                );
-                return vec![];
-            }
-            Ok(res) => res,
-        };
-        let mut result: Vec<CompletionCandidate> = vec![];
-        let project_ctx = opts.get_project_context().ok().flatten();
-        let project_id = match project_ctx {
-            Some(id) => resolve_project_id(&client, id).await,
-            None => None,
-        };
-        for launcher in launchers
-            .0
-            .iter()
-            .filter(|e| e.launcher_type == SessionMode::NonInteractive)
-            .filter(|e| match &project_id {
-                Some(id) => id == &e.project_id,
-                None => true,
-            })
-        {
-            let cc = make_launcher_completion_candidate(&client, launcher).await;
-            result.push(cc);
-        }
-        if result.is_empty() {
-            eprintln!("No job launchers found.");
-        }
-        result
+        complete_launcher_id(client, opts, SessionMode::NonInteractive).await
     })
+}
+
+/// Complete a interactive session launcher id
+pub fn complete_session_launcher_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
+    make_sync_completer(current, async |client, opts| {
+        complete_launcher_id(client, opts, SessionMode::Interactive).await
+    })
+}
+
+async fn complete_launcher_id(
+    client: Client,
+    opts: CommonOpts,
+    mode: SessionMode,
+) -> Vec<CompletionCandidate> {
+    let launchers = match client.list_launchers().await {
+        Err(msg) => {
+            eprintln!(
+                "Completions failed: Error getting list of launchers: {}",
+                msg
+            );
+            return vec![];
+        }
+        Ok(res) => res,
+    };
+    let mut result: Vec<CompletionCandidate> = vec![];
+    let project_ctx = opts.get_project_context().ok().flatten();
+    let project_id = match project_ctx {
+        Some(id) => resolve_project_id(&client, id).await,
+        None => None,
+    };
+    for launcher in launchers
+        .0
+        .iter()
+        .filter(|e| e.launcher_type == mode)
+        .filter(|e| match &project_id {
+            Some(id) => id == &e.project_id,
+            None => true,
+        })
+    {
+        let cc = make_launcher_completion_candidate(&client, launcher).await;
+        result.push(cc);
+    }
+    if result.is_empty() {
+        eprintln!("No job launchers found.");
+    }
+    result
 }
 
 /// Complete a job name
 pub fn complete_job_name(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
     make_sync_completer(current, async |client, opts| {
-        let jobs = match client
-            .list_sessions(Some(SessionMode::NonInteractive))
-            .await
-        {
-            Err(msg) => {
-                eprintln!("Completions failed: Error getting list of jobs: {}", msg);
-                return vec![];
-            }
-            Ok(res) => res,
-        };
-        let mut result: Vec<CompletionCandidate> = vec![];
-        let project_ctx = opts.get_project_context().ok().flatten();
-        let project_id = match project_ctx {
-            Some(id) => resolve_project_id(&client, id).await,
-            None => None,
-        };
-        for job in jobs.0.iter().filter(|e| match &project_id {
-            Some(id) => id == &e.project_id,
-            None => true,
-        }) {
-            let cc = make_job_name_completion_candidate(&client, job).await;
-            result.push(cc);
-        }
-        if result.is_empty() {
-            eprintln!("No job launchers found.");
-        }
-        result
+        complete_session_name(client, opts, SessionMode::NonInteractive).await
     })
+}
+/// Complete a interactive session name
+pub fn complete_interactive_session_name(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
+    make_sync_completer(current, async |client, opts| {
+        complete_session_name(client, opts, SessionMode::NonInteractive).await
+    })
+}
+
+async fn complete_session_name(
+    client: Client,
+    opts: CommonOpts,
+    mode: SessionMode,
+) -> Vec<CompletionCandidate> {
+    let jobs = match client.list_sessions(Some(mode)).await {
+        Err(msg) => {
+            eprintln!("Completions failed: Error getting list of jobs: {}", msg);
+            return vec![];
+        }
+        Ok(res) => res,
+    };
+    let mut result: Vec<CompletionCandidate> = vec![];
+    let project_ctx = opts.get_project_context().ok().flatten();
+    let project_id = match project_ctx {
+        Some(id) => resolve_project_id(&client, id).await,
+        None => None,
+    };
+    for job in jobs.0.iter().filter(|e| match &project_id {
+        Some(id) => id == &e.project_id,
+        None => true,
+    }) {
+        let cc = make_job_name_completion_candidate(&client, job).await;
+        result.push(cc);
+    }
+    if result.is_empty() {
+        eprintln!("No job launchers found.");
+    }
+    result
 }

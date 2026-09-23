@@ -2,6 +2,7 @@
 //! `De/Serialize` instances.
 
 use crate::data::{renku_url::RenkuUrl, submission_id::SubmissionId};
+use clap::ValueEnum;
 use iso8601_timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt};
@@ -37,7 +38,7 @@ impl fmt::Display for SessionLogs {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy, ValueEnum)]
 pub enum SessionMode {
     #[serde(rename = "interactive")]
     Interactive,
@@ -60,7 +61,7 @@ impl SessionMode {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct SessionStartRequest {
     pub launcher_id: String,
     pub session_type: String,
@@ -105,10 +106,11 @@ where
 {
     let mut builder = Builder::default();
     for r in data {
-        let data = vec![&r.name, r.id.as_str(), &r.project_id];
+        let launcher_type = r.launcher_type.to_string();
+        let data = vec![&r.name, r.id.as_str(), &launcher_type, &r.project_id];
         builder.push_record(data);
     }
-    builder.insert_record(0, vec!["Launcher", "Id", "Project Id"]);
+    builder.insert_record(0, vec!["Launcher", "Id", "Type", "Project Id"]);
 
     let mut table = builder.build();
     let settings = Settings::default().with(Style::sharp());
@@ -174,9 +176,44 @@ where
 impl fmt::Display for SessionList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.0.is_empty() {
-            write!(f, "No jobs found.")
+            write!(f, "No sessions found.")
         } else {
             let table = create_session_table(&self.0);
+            write!(f, "{}", table)
+        }
+    }
+}
+
+// New Type to distinguish formatting for job lists and interactive session lists
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InteractiveSessionList(pub SessionList);
+
+fn create_interactive_session_table<'a, I>(data: I) -> Table
+where
+    I: IntoIterator<Item = &'a SessionStartResponse>,
+{
+    let mut builder = Builder::default();
+    for r in data {
+        let started = r.started.format();
+        let status = r.status.state.to_str();
+        let data = vec![&r.name, &r.project_id, status, &started, &r.url];
+        builder.push_record(data);
+    }
+    builder.insert_record(0, vec!["Name", "Project Id", "Status", "Started", "Url"]);
+
+    let mut table = builder.build();
+    let settings = Settings::default().with(Style::sharp());
+
+    table.with(settings);
+    table
+}
+
+impl fmt::Display for InteractiveSessionList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.0.is_empty() {
+            write!(f, "No sessions found.")
+        } else {
+            let table = create_interactive_session_table(&self.0.0);
             write!(f, "{}", table)
         }
     }
@@ -237,6 +274,8 @@ pub struct SessionStartResponse {
     pub submission_id: Option<String>,
     pub status: SessionStatus,
     pub started: Timestamp,
+    pub session_type: SessionMode,
+    pub url: String,
 }
 
 impl fmt::Display for SessionStartResponse {

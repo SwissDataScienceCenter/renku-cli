@@ -55,6 +55,7 @@ rnk job list
 | `rnk project activate <project-ref>` | Set the active project for the current user (short form: `rnk p a`) |
 | `rnk project deactivate` | Unset the active project (short form: `rnk p d`) |
 | `rnk project current` | Show the currently active project (short form: `rnk p c`) |
+| `rnk project list` | List projects (supports `--all` / `-a` to show all projects, `--n-results` / `-n` to limit results) |
 
 ### Datasets
 
@@ -71,8 +72,22 @@ rnk job list
 | `rnk job stop` | Stop a job |
 | `rnk job logs` | View job logs |
 
-### Other
+### Sessions
 
+| Command | Description |
+|---------|-------------|
+| `rnk session start --launcher <id>` | Start an interactive session using a launcher |
+| `rnk session stop <session-id>` | Stop a running session |
+| `rnk session list` | List currently running sessions |
+| `rnk session logs <session-id>` | View session logs |
+
+### Launchers
+
+| Command | Description |
+|---------|-------------|
+| `rnk launcher list` | List currently running launchers |
+
+### Other
 | Command | Description |
 |---------|-------------|
 | `rnk version` | Show client and server version info |

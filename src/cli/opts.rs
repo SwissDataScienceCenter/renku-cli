@@ -175,6 +175,8 @@ pub enum SubCommand {
 
     #[command(alias = "j")]
     Job(job::Input),
+    #[command(alias = "s")]
+    Session(session::Input),
     #[command(alias = "l")]
     Launcher(launcher::Input),
 
