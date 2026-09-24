@@ -70,6 +70,8 @@
             pkgs.openssl
             pkgs.installShellFiles
             pkgs.git
+            pkgs.libgit2
+            pkgs.libssh2
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             # Additional darwin specific inputs can be set here
@@ -131,12 +133,14 @@
             inherit cargoArtifacts;
           });
 
-        my-user-docs = craneLib.mkCargoDerivation (commonArgs
+        # User docs build is slow on macOS (compiles git2 from C), only run on Linux
+        my-user-docs =
+          lib.optionalAttrs pkgs.stdenv.isLinux (craneLib.mkCargoDerivation (commonArgs
           // {
             inherit cargoArtifacts;
             pnameSuffix = "-userdocs";
             buildPhaseCargoCommand = "cargoWithProfile run --features user-doc -- user-doc ${docSrc}";
-          });
+          }));
 
         # Check formatting
         my-crate-fmt = craneLib.cargoFmt {

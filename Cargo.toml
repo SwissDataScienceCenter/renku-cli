@@ -39,7 +39,6 @@ regex-macro = { version = "0.3.0" }
 iso8601-timestamp = { version = "0.4" }
 toml = { version = "1.1.5" }
 git2 = { version = "0.21.0", default-features = false, features = [
-  "vendored-libgit2",
   "https",
   "ssh",
 ] }
@@ -94,6 +93,7 @@ vendored-openssl = [
   "openssl/vendored",
   "reqwest/native-tls-vendored",
 ] # include compiled openssl library
+vendored-git = ["git2/vendored-libgit2"] # statically link vendored libgit2
 vendored-zlib = [
   "git2/zlib-ng-compat",
 ] # without this feature wherever the cli is installed needs to have zlib.so
