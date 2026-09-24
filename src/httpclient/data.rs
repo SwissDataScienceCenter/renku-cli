@@ -44,6 +44,8 @@ pub enum SessionMode {
     Interactive,
     #[serde(rename = "non-interactive")]
     NonInteractive,
+    #[serde(rename = "app")]
+    App,
 }
 
 impl fmt::Display for SessionMode {
@@ -57,6 +59,7 @@ impl SessionMode {
         match self {
             SessionMode::Interactive => "interactive",
             SessionMode::NonInteractive => "non-interactive",
+            SessionMode::App => "app",
         }
     }
 }

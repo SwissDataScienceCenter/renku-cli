@@ -1,4 +1,5 @@
 use crate::{
+    cli::complete::complete_project_id,
     data::{
         project_id::{ProjectId, ProjectIdParseError},
         renku_url::RenkuUrl,
@@ -9,6 +10,7 @@ use crate::{
 
 use super::cmd::*;
 use clap::{Parser, ValueEnum, ValueHint};
+use clap_complete::ArgValueCompleter;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use serde::{Deserialize, Serialize};
 use snafu::{ResultExt, Snafu};
@@ -41,7 +43,7 @@ pub struct CommonOpts {
     /// present commands can use it to confine there functionality to
     /// this project. The value may be the project id (ulid) or the
     /// path like <username>/<project-name>.
-    #[arg(long, value_hint = ValueHint::Url)]
+    #[arg(long, value_hint=ValueHint::Other,add = ArgValueCompleter::new(complete_project_id))]
     pub project_context: Option<ProjectId>,
 
     /// Set a proxy to use for doing http requests. By default, the
