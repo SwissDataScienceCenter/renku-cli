@@ -100,6 +100,8 @@
           inherit cargoArtifacts;
           # additional arguments to cargo for building the app, --release is already there
           cargoExtraArgs = "";
+          # we run nextest further down, no need to run tests while building
+          doCheck = false;
           postInstall = ''
             for shell in fish zsh bash; do
                echo "COMPLETE=$shell rnk" > rnk.$shell
