@@ -283,7 +283,11 @@ pub struct SessionStartResponse {
 
 impl fmt::Display for SessionStartResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let table = create_session_table(vec![self]);
+        let table = match self.session_type {
+            SessionMode::Interactive => create_interactive_session_table(vec![self]),
+            SessionMode::NonInteractive => create_session_table(vec![self]),
+            SessionMode::App => create_interactive_session_table(vec![self]),
+        };
         write!(f, "{}", table)
     }
 }
