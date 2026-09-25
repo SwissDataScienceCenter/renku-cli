@@ -57,7 +57,7 @@ jobs:
 
       - name: Build with nix and run checks
         run: |
-          nix flake check --print-build-logs
+          nix flake check --max-jobs 2 --print-build-logs
 
   check-win:
     name: "check windows"
