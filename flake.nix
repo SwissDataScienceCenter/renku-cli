@@ -70,6 +70,8 @@
             pkgs.openssl
             pkgs.installShellFiles
             pkgs.git
+            pkgs.libgit2
+            pkgs.libssh2
           ]
           ++ lib.optionals pkgs.stdenv.isDarwin [
             # Additional darwin specific inputs can be set here
@@ -100,6 +102,8 @@
           inherit cargoArtifacts;
           # additional arguments to cargo for building the app, --release is already there
           cargoExtraArgs = "";
+          # we run nextest further down, no need to run tests while building
+          doCheck = false;
           postInstall = ''
             for shell in fish zsh bash; do
                echo "COMPLETE=$shell rnk" > rnk.$shell
@@ -108,63 +112,66 @@
           '';
         });
     in {
-      checks = {
-        # Build the crate as part of `nix flake check` for convenience
-        inherit my-crate;
+      checks =
+        {
+          # Build the crate as part of `nix flake check` for convenience
+          inherit my-crate;
 
-        # Run clippy (and deny all warnings) on the crate source,
-        # again, reusing the dependency artifacts from above.
-        #
-        # Note that this is done as a separate derivation so that
-        # we can block the CI if there are issues here, but not
-        # prevent downstream consumers from building our crate by itself.
-        my-crate-clippy = craneLib.cargoClippy (commonArgs
-          // {
-            inherit cargoArtifacts;
-            cargoClippyExtraArgs = "--features user-doc --all-targets -- --deny warnings";
-          });
+          # Run clippy (and deny all warnings) on the crate source,
+          # again, reusing the dependency artifacts from above.
+          #
+          # Note that this is done as a separate derivation so that
+          # we can block the CI if there are issues here, but not
+          # prevent downstream consumers from building our crate by itself.
+          my-crate-clippy = craneLib.cargoClippy (commonArgs
+            // {
+              inherit cargoArtifacts;
+              cargoClippyExtraArgs = "--features user-doc --all-targets -- --deny warnings";
+            });
 
-        my-crate-doc = craneLib.cargoDoc (commonArgs
-          // {
-            inherit cargoArtifacts;
-          });
+          my-crate-doc = craneLib.cargoDoc (commonArgs
+            // {
+              inherit cargoArtifacts;
+            });
 
-        my-user-docs = craneLib.mkCargoDerivation (commonArgs
-          // {
-            inherit cargoArtifacts;
-            pnameSuffix = "-userdocs";
-            buildPhaseCargoCommand = "cargoWithProfile run --features user-doc -- user-doc ${docSrc}";
-          });
+          # Check formatting
+          my-crate-fmt = craneLib.cargoFmt {
+            inherit src;
+            inherit version;
+          };
 
-        # Check formatting
-        my-crate-fmt = craneLib.cargoFmt {
-          inherit src;
-          inherit version;
-        };
+          # Audit dependencies
+          my-crate-audit = craneLib.cargoAudit {
+            inherit src advisory-db;
+            cargoAuditExtraArgs = "--ignore RUSTSEC-2023-0071";
+            inherit version;
+          };
 
-        # Audit dependencies
-        my-crate-audit = craneLib.cargoAudit {
-          inherit src advisory-db;
-          cargoAuditExtraArgs = "--ignore RUSTSEC-2023-0071";
-          inherit version;
-        };
+          # Audit licenses
+          my-crate-deny = craneLib.cargoDeny {
+            inherit src;
+            inherit version;
+          };
 
-        # Audit licenses
-        my-crate-deny = craneLib.cargoDeny {
-          inherit src;
-          inherit version;
-        };
-
-        # Run tests with cargo-nextest
-        # Consider setting `doCheck = false` on `my-crate` if you do not want
-        # the tests to run twice
-        my-crate-nextest = craneLib.cargoNextest (commonArgs
-          // {
-            inherit cargoArtifacts;
-            partitions = 1;
-            partitionType = "count";
-          });
-      };
+          # Run tests with cargo-nextest
+          # Consider setting `doCheck = false` on `my-crate` if you do not want
+          # the tests to run twice
+          my-crate-nextest = craneLib.cargoNextest (commonArgs
+            // {
+              inherit cargoArtifacts;
+              partitions = 1;
+              partitionType = "count";
+            });
+        }
+        // (lib.optionalAttrs pkgs.stdenv.isLinux {
+          # User docs build is slow on macOS (compiles git2 from C), only run on Linux
+          my-user-docs = craneLib.mkCargoDerivation (commonArgs
+            // {
+              inherit cargoArtifacts;
+              pnameSuffix = "-userdocs";
+              buildPhaseCargoCommand = "cargoWithProfile run --features user-doc -- user-doc ${docSrc}";
+            });
+        });
 
       packages =
         {

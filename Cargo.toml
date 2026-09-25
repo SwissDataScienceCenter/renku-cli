@@ -16,7 +16,6 @@ build = "build.rs"
 [dependencies]
 clap = { version = "4.6.6", features = ["derive", "wrap_help"] }
 clap_complete = { version = "4.6.9", features = ["unstable-dynamic"] }
-console = { version = "0.16.4" }
 env_logger = { version = "0.11.11" }
 log = { version = "0.4.34" }
 openssl = { version = "0.10.81", optional = true }
@@ -40,7 +39,6 @@ regex-macro = { version = "0.3.0" }
 iso8601-timestamp = { version = "0.4" }
 toml = { version = "1.1.5" }
 git2 = { version = "0.21.0", default-features = false, features = [
-  "vendored-libgit2",
   "https",
   "ssh",
 ] }
@@ -95,6 +93,7 @@ vendored-openssl = [
   "openssl/vendored",
   "reqwest/native-tls-vendored",
 ] # include compiled openssl library
+vendored-git = ["git2/vendored-libgit2"] # statically link vendored libgit2
 vendored-zlib = [
   "git2/zlib-ng-compat",
 ] # without this feature wherever the cli is installed needs to have zlib.so
