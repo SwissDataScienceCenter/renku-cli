@@ -25,6 +25,9 @@ pub struct Input {
     /// Start the session and show the logs until it ends or the user cancels with Ctrl-C.
     #[arg(long, default_value_t = false)]
     pub wait: bool,
+    /// Open the session in the browser.
+    #[arg(long, default_value_t = false)]
+    pub open: bool,
 }
 
 #[derive(Debug, Snafu)]
@@ -48,6 +51,20 @@ impl Input {
             .start_session(req)
             .await
             .context(HttpClientSnafu)?;
+
+        if self.open
+            && let Err(e) = open::that(result.effective_url().as_str())
+        {
+            ctx.write_result(&SimpleMessage {
+                message: format!(
+                    "Couldn't open browser, please navigate to {}: {}",
+                    result.effective_url(),
+                    e
+                ),
+            })
+            .await
+            .context(WriteResultSnafu)?;
+        };
 
         if self.wait {
             ctx.write_result(&SimpleMessage {

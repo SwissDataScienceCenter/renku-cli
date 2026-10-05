@@ -199,7 +199,8 @@ where
     for r in data {
         let started = r.started.format();
         let status = r.status.state.to_str();
-        let data = vec![&r.name, &r.project_id, status, &started, &r.url];
+        let url = r.effective_url();
+        let data = vec![&r.name, &r.project_id, status, &started, &url];
         builder.push_record(data);
     }
     builder.insert_record(0, vec!["Name", "Project Id", "Status", "Started", "Url"]);
@@ -279,6 +280,15 @@ pub struct SessionStartResponse {
     pub started: Timestamp,
     pub session_type: SessionMode,
     pub url: String,
+    pub external_url: Option<String>,
+}
+impl SessionStartResponse {
+    pub fn effective_url(&self) -> String {
+        match &self.external_url {
+            Some(u) => u.clone(),
+            None => self.url.clone(),
+        }
+    }
 }
 
 impl fmt::Display for SessionStartResponse {
