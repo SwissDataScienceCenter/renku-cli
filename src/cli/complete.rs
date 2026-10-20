@@ -187,7 +187,7 @@ pub fn complete_job_name(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
 /// Complete a interactive session name
 pub fn complete_interactive_session_name(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
     make_sync_completer(current, async |client, opts| {
-        complete_session_name(client, opts, SessionMode::NonInteractive).await
+        complete_session_name(client, opts, SessionMode::Interactive).await
     })
 }
 
