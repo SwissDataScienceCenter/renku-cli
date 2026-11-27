@@ -72,18 +72,21 @@ pub struct SessionStartRequest {
     pub job_args_override: Option<Vec<String>>,
     pub job_command_override: Option<Vec<String>>,
     pub resource_class_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_storage: Option<u32>,
 }
 impl fmt::Display for SessionStartRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SessionStart(launcher={}, session_type={}, submission_id={:?}, job_args_overrides={:?}, command={:?}, resource_class_id={:?})",
+            "SessionStart(launcher={}, session_type={}, submission_id={:?}, job_args_overrides={:?}, command={:?}, resource_class_id={:?}, disk_storage={:?})",
             self.launcher_id,
             self.session_type,
             self.submission_id,
             self.job_args_override,
             self.job_command_override,
-            self.resource_class_id
+            self.resource_class_id,
+            self.disk_storage
         )
     }
 }
