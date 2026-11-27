@@ -41,6 +41,11 @@ pub struct Input {
     #[arg(long, value_hint=ValueHint::Other, add = ArgValueCompleter::new(complete_resource_class_id))]
     pub resource_class_id: Option<i64>,
 
+    /// Overwrite the disk storage size (in gigabytes) of the job. It
+    /// must not exceed what the resource class allows.
+    #[arg(long, value_name = "GB")]
+    pub disk_storage: Option<u32>,
+
     /// Start the job and show the logs until it ends or the user cancels with Ctrl-C.
     #[arg(long, default_value_t = false)]
     pub wait: bool,
@@ -82,6 +87,7 @@ impl Input {
             job_args_override: args,
             job_command_override: cmd,
             resource_class_id: self.resource_class_id,
+            disk_storage: self.disk_storage,
         };
         let result = ctx
             .client

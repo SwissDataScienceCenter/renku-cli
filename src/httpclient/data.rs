@@ -72,18 +72,21 @@ pub struct SessionStartRequest {
     pub job_args_override: Option<Vec<String>>,
     pub job_command_override: Option<Vec<String>>,
     pub resource_class_id: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_storage: Option<u32>,
 }
 impl fmt::Display for SessionStartRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SessionStart(launcher={}, session_type={}, submission_id={:?}, job_args_overrides={:?}, command={:?}, resource_class_id={:?})",
+            "SessionStart(launcher={}, session_type={}, submission_id={:?}, job_args_overrides={:?}, command={:?}, resource_class_id={:?}, disk_storage={:?})",
             self.launcher_id,
             self.session_type,
             self.submission_id,
             self.job_args_override,
             self.job_command_override,
-            self.resource_class_id
+            self.resource_class_id,
+            self.disk_storage
         )
     }
 }
@@ -163,12 +166,20 @@ where
         let sub_id = r.submission_id.as_deref().unwrap_or("-");
         let started = r.started.format();
         let status = r.status.state.to_str();
-        let data = vec![&r.name, sub_id, &r.project_id, status, &started];
+        let storage = r.storage().map_or("-".to_string(), |s| format!("{} GB", s));
+        let data = vec![&r.name, sub_id, &r.project_id, status, &started, &storage];
         builder.push_record(data);
     }
     builder.insert_record(
         0,
-        vec!["Job", "Submission Id", "Project Id", "Status", "Started"],
+        vec![
+            "Job",
+            "Submission Id",
+            "Project Id",
+            "Status",
+            "Started",
+            "Storage",
+        ],
     );
 
     let mut table = builder.build();
@@ -272,6 +283,17 @@ pub struct SessionStatus {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct SessionResources {
+    pub requests: Option<SessionResourcesRequests>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionResourcesRequests {
+    /// Disk storage in gigabytes
+    pub storage: Option<u32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SessionStartResponse {
     pub image: String,
     pub name: String,
@@ -283,6 +305,17 @@ pub struct SessionStartResponse {
     pub session_type: SessionMode,
     pub url: String,
     pub external_url: Option<String>,
+    #[serde(default)]
+    pub resources: Option<SessionResources>,
+}
+impl SessionStartResponse {
+    /// The disk storage of the session in gigabytes, if reported.
+    pub fn storage(&self) -> Option<u32> {
+        self.resources
+            .as_ref()
+            .and_then(|r| r.requests.as_ref())
+            .and_then(|r| r.storage)
+    }
 }
 impl SessionStartResponse {
     pub fn effective_url(&self) -> String {
