@@ -1,5 +1,8 @@
 use crate::{
-    cli::{cmd::job::logs, complete::complete_job_launcher_id},
+    cli::{
+        cmd::job::logs,
+        complete::{complete_job_launcher_id, complete_resource_class_id},
+    },
     data::{simple_message::SimpleMessage, submission_id::SubmissionId},
     httpclient::{self, data::SessionStartRequest},
 };
@@ -35,7 +38,7 @@ pub struct Input {
 
     /// The id of the resource class to run the job with. If missing, the
     /// default resource class of the launcher is used.
-    #[arg(long)]
+    #[arg(long, value_hint=ValueHint::Other, add = ArgValueCompleter::new(complete_resource_class_id))]
     pub resource_class_id: Option<i64>,
 
     /// Start the job and show the logs until it ends or the user cancels with Ctrl-C.

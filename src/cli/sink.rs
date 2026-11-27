@@ -66,5 +66,6 @@ impl Sink for SessionStartResponse {}
 impl Sink for SessionList {}
 impl Sink for InteractiveSessionList {}
 impl Sink for LauncherList {}
+impl Sink for ResourceClassList {}
 impl Sink for SessionLogs {}
 impl Sink for VersionInfo {}
