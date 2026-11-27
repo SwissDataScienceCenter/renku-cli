@@ -166,9 +166,7 @@ where
         let sub_id = r.submission_id.as_deref().unwrap_or("-");
         let started = r.started.format();
         let status = r.status.state.to_str();
-        let storage = r
-            .storage()
-            .map_or("-".to_string(), |s| format!("{} GB", s));
+        let storage = r.storage().map_or("-".to_string(), |s| format!("{} GB", s));
         let data = vec![&r.name, sub_id, &r.project_id, status, &started, &storage];
         builder.push_record(data);
     }
