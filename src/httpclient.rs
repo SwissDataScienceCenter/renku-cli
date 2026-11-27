@@ -585,6 +585,22 @@ impl Client {
         self.json_get_option::<SessionLauncher>(&path).await
     }
 
+    /// List the resource pools (including their classes) the user has access to.
+    pub async fn list_resource_pools(&self) -> Result<Vec<ResourcePool>, Error> {
+        let path = "/api/data/resource_pools";
+        self.json_get::<Vec<ResourcePool>>(path).await
+    }
+
+    /// List the resource classes the user has access to.
+    ///
+    /// There is no endpoint listing all classes, they are collected
+    /// from all accessible resource pools.
+    pub async fn list_resource_classes(&self) -> Result<ResourceClassList, Error> {
+        let pools = self.list_resource_pools().await?;
+        let result = pools.into_iter().flat_map(|p| p.classes).collect();
+        Ok(ResourceClassList(result))
+    }
+
     pub async fn clear_token(&self) -> Result<(), Error> {
         self.keystore.clear_async().await.context(KeystoreSnafu)
     }

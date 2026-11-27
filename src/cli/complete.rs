@@ -5,7 +5,10 @@ use crate::{
     data::project_id::ProjectId,
     httpclient::{
         Client,
-        data::{ProjectDetails, SessionLauncher, SessionMode, SessionStartResponse},
+        data::{
+            ProjectDetails, ResourceClass, ResourcePool, SessionLauncher, SessionMode,
+            SessionStartResponse,
+        },
     },
 };
 
@@ -256,4 +259,51 @@ async fn make_project_completion_candidate(project: &ProjectDetails) -> Completi
     let cc = CompletionCandidate::new(format!("{}/{}", project.namespace, project.slug));
 
     cc.help(Some(help))
+}
+
+/// Complete a resource class id
+pub fn complete_resource_class_id(current: &ffi::OsStr) -> Vec<CompletionCandidate> {
+    make_sync_completer(current, async |client, _| {
+        let pools = match client.list_resource_pools().await {
+            Err(msg) => {
+                eprintln!(
+                    "Completions failed: Error getting list of resource classes: {}",
+                    msg
+                );
+                return vec![];
+            }
+            Ok(res) => res,
+        };
+
+        let result: Vec<CompletionCandidate> = pools
+            .iter()
+            .flat_map(|pool| {
+                pool.classes
+                    .iter()
+                    .map(|rc| make_resource_class_completion_candidate(pool, rc))
+            })
+            .collect();
+        if result.is_empty() {
+            eprintln!("No resource classes found.");
+        }
+        result
+    })
+}
+
+fn make_resource_class_completion_candidate(
+    pool: &ResourcePool,
+    rc: &ResourceClass,
+) -> CompletionCandidate {
+    let mut help = StyledStr::new();
+    help.push_str(&format!(
+        "{} ({}) - {} CPU, {} GB RAM",
+        rc.name, pool.name, rc.cpu, rc.memory
+    ));
+    if rc.gpu > 0 {
+        help.push_str(&format!(", {} GPU", rc.gpu));
+    }
+    if rc.default {
+        help.push_str(" (default)");
+    }
+    CompletionCandidate::new(rc.id.to_string()).help(Some(help))
 }

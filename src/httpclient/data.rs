@@ -71,17 +71,19 @@ pub struct SessionStartRequest {
     pub submission_id: Option<SubmissionId>,
     pub job_args_override: Option<Vec<String>>,
     pub job_command_override: Option<Vec<String>>,
+    pub resource_class_id: Option<i64>,
 }
 impl fmt::Display for SessionStartRequest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "SessionStart(launcher={}, session_type={}, submission_id={:?}, job_args_overrides={:?}, command={:?})",
+            "SessionStart(launcher={}, session_type={}, submission_id={:?}, job_args_overrides={:?}, command={:?}, resource_class_id={:?})",
             self.launcher_id,
             self.session_type,
             self.submission_id,
             self.job_args_override,
-            self.job_command_override
+            self.job_command_override,
+            self.resource_class_id
         )
     }
 }
@@ -349,6 +351,88 @@ impl fmt::Display for VersionInfo {
             "Renku Platform:\nUrl: {}\nVersion: {}",
             self.renku_url, self.renku.version
         )
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResourceClass {
+    pub id: i64,
+    pub name: String,
+    pub cpu: f64,
+    pub memory: u64,
+    pub gpu: u64,
+    #[serde(default)]
+    pub default: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResourcePool {
+    pub id: i64,
+    pub name: String,
+    #[serde(default)]
+    pub classes: Vec<ResourceClass>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ResourceClassList(pub Vec<ResourceClass>);
+impl ResourceClassList {
+    pub fn filter<F>(self, f: F) -> ResourceClassList
+    where
+        F: Fn(&ResourceClass) -> bool,
+    {
+        let l: Vec<ResourceClass> = self.0.into_iter().filter(|v| f(v)).collect();
+        ResourceClassList(l)
+    }
+
+    pub fn retain<F>(&mut self, f: F)
+    where
+        F: Fn(&ResourceClass) -> bool,
+    {
+        self.0.retain(|v| f(v));
+    }
+}
+
+fn create_resource_class_table<'a, I>(data: I) -> Table
+where
+    I: IntoIterator<Item = &'a ResourceClass>,
+{
+    let mut builder = Builder::default();
+    for r in data {
+        let id = r.id.to_string();
+        let cpu = r.cpu.to_string();
+        let memory = r.memory.to_string();
+        let gpu = r.gpu.to_string();
+        let default = if r.default { "yes" } else { "" };
+        let data = vec![&r.name, &id, &cpu, &memory, &gpu, default];
+        builder.push_record(data);
+    }
+    builder.insert_record(
+        0,
+        vec![
+            "Resource Class",
+            "Id",
+            "CPU",
+            "Memory (GB)",
+            "GPU",
+            "Default",
+        ],
+    );
+
+    let mut table = builder.build();
+    let settings = Settings::default().with(Style::sharp());
+
+    table.with(settings);
+    table
+}
+
+impl fmt::Display for ResourceClassList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_empty() {
+            write!(f, "No resource classes found.")
+        } else {
+            let table = create_resource_class_table(&self.0);
+            write!(f, "{}", table)
+        }
     }
 }
 

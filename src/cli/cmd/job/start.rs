@@ -1,5 +1,8 @@
 use crate::{
-    cli::{cmd::job::logs, complete::complete_job_launcher_id},
+    cli::{
+        cmd::job::logs,
+        complete::{complete_job_launcher_id, complete_resource_class_id},
+    },
     data::{simple_message::SimpleMessage, submission_id::SubmissionId},
     httpclient::{self, data::SessionStartRequest},
 };
@@ -32,6 +35,11 @@ pub struct Input {
     /// Overwrite the command that is set in the launcher.
     #[arg(long)]
     pub command: Vec<String>,
+
+    /// The id of the resource class to run the job with. If missing, the
+    /// default resource class of the launcher is used.
+    #[arg(long, value_hint=ValueHint::Other, add = ArgValueCompleter::new(complete_resource_class_id))]
+    pub resource_class_id: Option<i64>,
 
     /// Start the job and show the logs until it ends or the user cancels with Ctrl-C.
     #[arg(long, default_value_t = false)]
@@ -73,6 +81,7 @@ impl Input {
             submission_id: Some(submission_id),
             job_args_override: args,
             job_command_override: cmd,
+            resource_class_id: self.resource_class_id,
         };
         let result = ctx
             .client
