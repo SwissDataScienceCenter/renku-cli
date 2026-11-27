@@ -33,6 +33,11 @@ pub struct Input {
     #[arg(long)]
     pub command: Vec<String>,
 
+    /// The id of the resource class to run the job with. If missing, the
+    /// default resource class of the launcher is used.
+    #[arg(long)]
+    pub resource_class_id: Option<i64>,
+
     /// Start the job and show the logs until it ends or the user cancels with Ctrl-C.
     #[arg(long, default_value_t = false)]
     pub wait: bool,
@@ -73,6 +78,7 @@ impl Input {
             submission_id: Some(submission_id),
             job_args_override: args,
             job_command_override: cmd,
+            resource_class_id: self.resource_class_id,
         };
         let result = ctx
             .client
